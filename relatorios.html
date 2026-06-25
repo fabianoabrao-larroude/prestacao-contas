@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div><p class="text-sm text-slate-500">Carregando…</p></div>
+  </div>
+  <div id="app" class="hidden flex h-screen overflow-hidden">
+    <div id="sidebar-container" class="flex-shrink-0"></div>
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-7xl mx-auto">
+
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">Relatórios</h1>
+            <p class="text-sm text-slate-500 mt-1">Análise de despesas por período e categoria</p>
+          </div>
+          <button onclick="exportarCSV()" class="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Exportar CSV
+          </button>
+        </div>
+
+        <!-- Abas de relatório -->
+        <div class="flex gap-1 bg-slate-100 rounded-xl p-1 mb-5 overflow-x-auto">
+          <button onclick="setAba('geral')"    id="aba-geral"    class="flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium transition-colors">Geral</button>
+          <button onclick="setAba('centro')"   id="aba-centro"   class="flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium transition-colors">Por Centro</button>
+          <button onclick="setAba('cartao')"   id="aba-cartao"   class="flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium transition-colors">Por Cartão</button>
+          <button onclick="setAba('usuario')"  id="aba-usuario"  class="flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium transition-colors">Por Usuário</button>
+          <button onclick="setAba('conta')"    id="aba-conta"    class="flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium transition-colors">Por Conta</button>
+        </div>
+
+        <!-- Filtros -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 mb-5">
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Data Inicial</label>
+              <input id="f-data-ini" type="date" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Data Final</label>
+              <input id="f-data-fim" type="date" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Competência</label>
+              <input id="f-comp" type="month" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Status</label>
+              <select id="f-status" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Todos</option>
+                <option>RASCUNHO</option><option>ENVIADA</option><option>APROVADA</option><option>REPROVADA</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Centro de Custo</label>
+              <select id="f-centro" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Cartão</label>
+              <select id="f-cartao" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div class="flex items-end gap-2">
+              <button onclick="gerar()" class="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">Gerar</button>
+              <button onclick="limpar()" class="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cards de totais -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5" id="cards-totais">
+          <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs text-slate-500">Total Geral</p>
+            <p class="text-xl font-bold text-slate-900 mt-1" id="tot-geral">–</p>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs text-green-600 font-medium">Aprovadas</p>
+            <p class="text-xl font-bold text-slate-900 mt-1" id="tot-aprov">–</p>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs text-blue-600 font-medium">Enviadas</p>
+            <p class="text-xl font-bold text-slate-900 mt-1" id="tot-env">–</p>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-4">
+            <p class="text-xs text-slate-500">Registros</p>
+            <p class="text-xl font-bold text-slate-900 mt-1" id="tot-qtd">–</p>
+          </div>
+        </div>
+
+        <!-- Tabela resultado -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm" id="tabela-resultado">
+              <thead id="thead-resultado" class="bg-slate-50 border-b border-slate-200"></thead>
+              <tbody id="tbody-resultado" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let abaAtual = 'geral';
+    let dadosExport = [];
+
+    function setAba(aba) {
+      abaAtual = aba;
+      ['geral','centro','cartao','usuario','conta'].forEach(a => {
+        const btn = document.getElementById(`aba-${a}`);
+        if (a === aba) btn.className = 'flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium bg-white text-blue-700 shadow-sm transition-colors';
+        else           btn.className = 'flex-1 min-w-max px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors';
+      });
+      gerar();
+    }
+
+    function montarQuery() {
+      const ini    = document.getElementById('f-data-ini').value;
+      const fim    = document.getElementById('f-data-fim').value;
+      const comp   = document.getElementById('f-comp').value;
+      const status = document.getElementById('f-status').value;
+      const centro = document.getElementById('f-centro').value;
+      const cartao = document.getElementById('f-cartao').value;
+
+      let q = supabase.from('despesas').select(`
+        id, data_despesa, data_cadastro, competencia, fornecedor, descricao, valor, status,
+        usuarios!despesas_usuario_id_fkey(nome),
+        centros_custo(nome), contas_despesa(nome),
+        cartoes_credito(nome, ultimos_4_digitos),
+        despesa_anexos(id)`);
+
+      if (ini)    q = q.gte('data_despesa', ini);
+      if (fim)    q = q.lte('data_despesa', fim);
+      if (comp)   q = q.eq('competencia', comp);
+      if (status) q = q.eq('status', status);
+      if (centro) q = q.eq('centro_custo_id', centro);
+      if (cartao) q = q.eq('cartao_id', cartao);
+
+      return q.order('data_despesa', { ascending: false });
+    }
+
+    async function gerar() {
+      const { data, error } = await montarQuery();
+      if (error) { Utils.toast(error.message, 'error'); return; }
+      const rows = data || [];
+
+      // Totais
+      const totGeral = rows.reduce((s, d) => s + Number(d.valor), 0);
+      const totAprov = rows.filter(d => d.status === 'APROVADA').reduce((s,d) => s + Number(d.valor), 0);
+      const totEnv   = rows.filter(d => d.status === 'ENVIADA').reduce((s,d) => s + Number(d.valor), 0);
+      document.getElementById('tot-geral').textContent = Utils.formatCurrency(totGeral);
+      document.getElementById('tot-aprov').textContent = Utils.formatCurrency(totAprov);
+      document.getElementById('tot-env').textContent   = Utils.formatCurrency(totEnv);
+      document.getElementById('tot-qtd').textContent   = rows.length;
+
+      if (abaAtual === 'geral')   renderGeral(rows);
+      if (abaAtual === 'centro')  renderAgrupado(rows, d => d.centros_custo?.nome || 'Sem centro', 'Centro de Custo');
+      if (abaAtual === 'cartao')  renderAgrupado(rows, d => `${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}`, 'Cartão');
+      if (abaAtual === 'usuario') renderAgrupado(rows, d => d.usuarios?.nome || '–', 'Usuário');
+      if (abaAtual === 'conta')   renderAgrupado(rows, d => d.contas_despesa?.nome || '–', 'Conta de Despesa');
+    }
+
+    function renderGeral(rows) {
+      document.getElementById('thead-resultado').innerHTML = `
+        <tr>
+          ${['Data Despesa','Cadastro','Competência','Usuário','Cartão','Centro','Conta','Fornecedor','Descrição','Valor','Status','Anexos']
+            .map(h => `<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">${h}</th>`).join('')}
+        </tr>`;
+
+      dadosExport = rows.map(d => ({
+        'Data Despesa':  Utils.formatDate(d.data_despesa),
+        'Cadastro':      Utils.formatDateTime(d.data_cadastro),
+        'Competência':   Utils.formatCompetencia(d.competencia),
+        'Usuário':       d.usuarios?.nome || '',
+        'Cartão':        `${d.cartoes_credito?.nome || ''} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}`,
+        'Centro Custo':  d.centros_custo?.nome || '',
+        'Conta Despesa': d.contas_despesa?.nome || '',
+        'Fornecedor':    d.fornecedor,
+        'Descrição':     d.descricao,
+        'Valor':         d.valor,
+        'Status':        d.status,
+        'Anexos':        d.despesa_anexos?.length || 0,
+      }));
+
+      Utils.renderTable(document.getElementById('tbody-resultado'), rows, d => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
+          <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">${Utils.formatDateTime(d.data_cadastro)}</td>
+          <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(d.competencia)}</td>
+          <td class="px-4 py-3 text-slate-700">${d.usuarios?.nome || '–'}</td>
+          <td class="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}</td>
+          <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
+          <td class="px-4 py-3 text-slate-600 text-xs">${d.contas_despesa?.nome || '–'}</td>
+          <td class="px-4 py-3 font-medium text-slate-800">${d.fornecedor}</td>
+          <td class="px-4 py-3 text-slate-600 max-w-xs truncate">${d.descricao}</td>
+          <td class="px-4 py-3 text-right font-medium text-slate-900 whitespace-nowrap">${Utils.formatCurrency(d.valor)}</td>
+          <td class="px-4 py-3">${Utils.statusBadge(d.status)}</td>
+          <td class="px-4 py-3 text-center text-slate-600">${d.despesa_anexos?.length || 0}</td>
+        </tr>`);
+    }
+
+    function renderAgrupado(rows, keyFn, colLabel) {
+      const grupos = {};
+      rows.forEach(d => {
+        const k = keyFn(d);
+        if (!grupos[k]) grupos[k] = { label: k, total: 0, qtd: 0, aprovado: 0 };
+        grupos[k].total += Number(d.valor);
+        grupos[k].qtd++;
+        if (d.status === 'APROVADA') grupos[k].aprovado += Number(d.valor);
+      });
+      const lista = Object.values(grupos).sort((a,b) => b.total - a.total);
+
+      document.getElementById('thead-resultado').innerHTML = `
+        <tr>
+          ${[colLabel, 'Qtd Despesas', 'Total', 'Aprovado', '% do Total']
+            .map(h => `<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">${h}</th>`).join('')}
+        </tr>`;
+
+      const grandTotal = lista.reduce((s,g) => s + g.total, 0);
+
+      dadosExport = lista.map(g => ({
+        [colLabel]:       g.label,
+        'Qtd Despesas':   g.qtd,
+        'Total':          g.total,
+        'Aprovado':       g.aprovado,
+        '% do Total':     grandTotal > 0 ? ((g.total / grandTotal) * 100).toFixed(1) + '%' : '0%',
+      }));
+
+      Utils.renderTable(document.getElementById('tbody-resultado'), lista, g => {
+        const pct = grandTotal > 0 ? ((g.total / grandTotal) * 100).toFixed(1) : '0.0';
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3 font-medium text-slate-800">${g.label}</td>
+            <td class="px-4 py-3 text-slate-600">${g.qtd}</td>
+            <td class="px-4 py-3 font-semibold text-slate-900">${Utils.formatCurrency(g.total)}</td>
+            <td class="px-4 py-3 text-green-700">${Utils.formatCurrency(g.aprovado)}</td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-slate-200 rounded-full h-1.5 max-w-24">
+                  <div class="bg-blue-500 h-1.5 rounded-full" style="width:${pct}%"></div>
+                </div>
+                <span class="text-xs text-slate-600">${pct}%</span>
+              </div>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function exportarCSV() {
+      if (!dadosExport.length) { Utils.toast('Gere o relatório antes de exportar.', 'warning'); return; }
+      const nomeAba = { geral:'geral', centro:'por_centro', cartao:'por_cartao', usuario:'por_usuario', conta:'por_conta' };
+      Utils.exportCSV(dadosExport, `relatorio_${nomeAba[abaAtual]}_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function limpar() {
+      ['f-data-ini','f-data-fim','f-comp','f-status','f-centro','f-cartao']
+        .forEach(id => { document.getElementById(id).value = ''; });
+      gerar();
+    }
+
+    async function popularFiltros() {
+      const [{ data: cc }, { data: cart }] = await Promise.all([
+        supabase.from('centros_custo').select('id, nome').eq('ativo', true).order('nome'),
+        supabase.from('cartoes_credito').select('id, nome, ultimos_4_digitos').eq('ativo', true).order('nome'),
+      ]);
+      Utils.populateSelect(document.getElementById('f-centro'), cc || [], 'id', 'nome');
+      const selCart = document.getElementById('f-cartao');
+      selCart.innerHTML = '<option value="">Todos</option>';
+      (cart || []).forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = `${c.nome} ••••${c.ultimos_4_digitos}`;
+        selCart.appendChild(opt);
+      });
+    }
+
+    (async () => {
+      const user = await Layout.init('relatorios', ['ADMIN','GESTOR']);
+      if (!user) return;
+      await popularFiltros();
+      setAba('geral');
+    })();
+  </script>
+</body>
+</html>

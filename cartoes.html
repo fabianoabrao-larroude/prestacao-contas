@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cartões – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div><p class="text-sm text-slate-500">Carregando…</p></div>
+  </div>
+  <div id="app" class="hidden flex h-screen overflow-hidden">
+    <div id="sidebar-container" class="flex-shrink-0"></div>
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-4xl mx-auto">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">Cartões de Crédito</h1>
+            <p class="text-sm text-slate-500 mt-1">Cartões corporativos disponíveis</p>
+          </div>
+          <button onclick="abrirModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Novo Cartão
+          </button>
+        </div>
+
+        <div class="flex gap-3 mb-4">
+          <input id="busca" type="text" placeholder="Buscar por nome ou bandeira…" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select id="filtro-ativo" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Todos</option><option value="true">Ativos</option><option value="false">Inativos</option>
+          </select>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Código</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bandeira</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Final</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 id="modal-title" class="text-lg font-semibold text-slate-900">Novo Cartão</h2>
+        <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <input id="edit-id" type="hidden">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Código *</label>
+            <input id="edit-codigo" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="CART001">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Últimos 4 dígitos *</label>
+            <input id="edit-digitos" type="text" required maxlength="4" pattern="\d{4}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="1234">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nome do Cartão *</label>
+          <input id="edit-nome" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Mastercard Comercial">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Bandeira</label>
+          <select id="edit-bandeira" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Selecione…</option>
+            <option>Visa</option><option>Mastercard</option><option>American Express</option><option>Elo</option><option>Hipercard</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="edit-ativo" type="checkbox" checked class="rounded text-blue-600">
+          <label class="text-sm text-slate-700">Ativo</label>
+        </div>
+        <div id="msg-modal" class="hidden text-sm px-3 py-2 rounded-lg border"></div>
+        <div class="flex gap-3 pt-2">
+          <button onclick="fecharModal()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">Cancelar</button>
+          <button onclick="salvar()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let todos = [];
+
+    async function carregar() {
+      const { data } = await supabase.from('cartoes_credito').select('*').order('codigo');
+      todos = data || [];
+      renderizar();
+    }
+
+    function renderizar() {
+      const busca = document.getElementById('busca').value.toLowerCase();
+      const ativo = document.getElementById('filtro-ativo').value;
+      const filtrados = todos.filter(r => {
+        const ok1 = !busca || r.nome.toLowerCase().includes(busca) || (r.bandeira || '').toLowerCase().includes(busca) || r.codigo.toLowerCase().includes(busca);
+        const ok2 = ativo === '' || String(r.ativo) === ativo;
+        return ok1 && ok2;
+      });
+      Utils.renderTable(document.getElementById('tbody'), filtrados, r => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.codigo}</td>
+          <td class="px-5 py-3 font-medium text-slate-800">${r.nome}</td>
+          <td class="px-5 py-3 text-slate-600">${r.bandeira || '–'}</td>
+          <td class="px-5 py-3 font-mono text-slate-600">••••&nbsp;${r.ultimos_4_digitos}</td>
+          <td class="px-5 py-3">${Utils.ativoBadge(r.ativo)}</td>
+          <td class="px-5 py-3">
+            <button onclick='editar(${JSON.stringify(r)})' class="text-blue-600 hover:text-blue-800 text-xs font-medium">Editar</button>
+          </td>
+        </tr>`);
+    }
+
+    function abrirModal(item = null) {
+      document.getElementById('modal-title').textContent = item ? 'Editar Cartão' : 'Novo Cartão';
+      document.getElementById('edit-id').value       = item?.id || '';
+      document.getElementById('edit-codigo').value   = item?.codigo || '';
+      document.getElementById('edit-nome').value     = item?.nome || '';
+      document.getElementById('edit-digitos').value  = item?.ultimos_4_digitos || '';
+      document.getElementById('edit-bandeira').value = item?.bandeira || '';
+      document.getElementById('edit-ativo').checked  = item ? item.ativo : true;
+      document.getElementById('edit-codigo').disabled  = !!item;
+      document.getElementById('edit-digitos').disabled = !!item;
+      document.getElementById('msg-modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('hidden');
+    }
+    function editar(item) { abrirModal(item); }
+    function fecharModal() { document.getElementById('modal').classList.add('hidden'); }
+
+    async function salvar() {
+      const id      = document.getElementById('edit-id').value;
+      const codigo  = document.getElementById('edit-codigo').value.trim();
+      const nome    = document.getElementById('edit-nome').value.trim();
+      const digitos = document.getElementById('edit-digitos').value.trim();
+      const bandeira= document.getElementById('edit-bandeira').value;
+      const ativo   = document.getElementById('edit-ativo').checked;
+      const msg     = document.getElementById('msg-modal');
+
+      if (!nome || (!id && (!codigo || !/^\d{4}$/.test(digitos)))) {
+        msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
+        msg.textContent = 'Preencha todos os campos obrigatórios. Últimos 4 dígitos devem ser numéricos.';
+        msg.classList.remove('hidden'); return;
+      }
+
+      const payload = { nome, bandeira: bandeira || null, ativo };
+      let error;
+      if (id) {
+        ({ error } = await supabase.from('cartoes_credito').update(payload).eq('id', id));
+      } else {
+        ({ error } = await supabase.from('cartoes_credito').insert({ ...payload, codigo, ultimos_4_digitos: digitos }));
+      }
+      if (error) {
+        msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
+        msg.textContent = error.message.includes('unique') ? 'Código já cadastrado.' : error.message;
+        msg.classList.remove('hidden'); return;
+      }
+      Utils.toast(id ? 'Cartão atualizado!' : 'Cartão criado!');
+      fecharModal(); carregar();
+    }
+
+    document.getElementById('busca').addEventListener('input', Utils.debounce(renderizar));
+    document.getElementById('filtro-ativo').addEventListener('change', renderizar);
+
+    (async () => {
+      const user = await Layout.init('cartoes', ['ADMIN']);
+      if (!user) return;
+      await carregar();
+    })();
+  </script>
+</body>
+</html>

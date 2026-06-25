@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usuários – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+</head>
+<body class="bg-slate-50">
+
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+      <p class="text-sm text-slate-500">Carregando…</p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden flex h-screen overflow-hidden">
+    <div id="sidebar-container" class="flex-shrink-0"></div>
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-6xl mx-auto">
+
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">Usuários</h1>
+            <p class="text-sm text-slate-500 mt-1">Gerencie os usuários do sistema</p>
+          </div>
+          <button onclick="abrirModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Convidar Usuário
+          </button>
+        </div>
+
+        <!-- Filtros -->
+        <div class="flex gap-3 mb-4">
+          <input id="busca" type="text" placeholder="Buscar por nome ou e-mail…"
+            class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select id="filtro-perfil" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Todos os perfis</option>
+            <option value="ADMIN">ADMIN</option>
+            <option value="GESTOR">GESTOR</option>
+            <option value="USUARIO">USUARIO</option>
+          </select>
+          <select id="filtro-status" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Todos os status</option>
+            <option value="CONVIDADO">CONVIDADO</option>
+            <option value="ATIVO">ATIVO</option>
+            <option value="INATIVO">INATIVO</option>
+            <option value="BLOQUEADO">BLOQUEADO</option>
+          </select>
+        </div>
+
+        <!-- Tabela -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Código</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">E-mail</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Perfil</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Último Login</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal convidar usuário -->
+  <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-slate-900">Convidar Novo Usuário</h2>
+        <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <form id="form-invite" class="px-6 py-5 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Nome completo *</label>
+            <input id="inv-nome" type="text" required
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-slate-700 mb-1">E-mail *</label>
+            <input id="inv-email" type="email" required
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Perfil *</label>
+            <select id="inv-perfil" required
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Selecione…</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="GESTOR">GESTOR</option>
+              <option value="USUARIO">USUARIO</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Centros de Custo</label>
+          <div id="centros-list" class="space-y-2 max-h-40 overflow-y-auto border border-slate-200 rounded-lg p-3">
+            <p class="text-xs text-slate-400">Carregando…</p>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Cartões</label>
+          <div id="cartoes-list" class="space-y-2 max-h-32 overflow-y-auto border border-slate-200 rounded-lg p-3">
+            <p class="text-xs text-slate-400">Carregando…</p>
+          </div>
+        </div>
+
+        <div id="msg-modal" class="hidden text-sm px-3 py-2 rounded-lg border"></div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" onclick="fecharModal()"
+            class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-invite"
+            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50">
+            Enviar Convite
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal editar status -->
+  <div id="modal-edit" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-slate-900">Editar Usuário</h2>
+        <button onclick="fecharModalEdit()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <input id="edit-id" type="hidden">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nome</label>
+          <input id="edit-nome" type="text"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Status de Acesso</label>
+          <select id="edit-status"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ATIVO">ATIVO</option>
+            <option value="INATIVO">INATIVO</option>
+            <option value="BLOQUEADO">BLOQUEADO</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Perfil</label>
+          <select id="edit-perfil"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ADMIN">ADMIN</option>
+            <option value="GESTOR">GESTOR</option>
+            <option value="USUARIO">USUARIO</option>
+          </select>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button onclick="fecharModalEdit()"
+            class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+            Cancelar
+          </button>
+          <button onclick="salvarEdicao()"
+            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            Salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let todos = [];
+
+    async function carregarUsuarios() {
+      const { data } = await supabase
+        .from('usuarios')
+        .select('*')
+        .order('nome');
+      todos = data || [];
+      renderizar();
+    }
+
+    function renderizar() {
+      const busca   = document.getElementById('busca').value.toLowerCase();
+      const perfil  = document.getElementById('filtro-perfil').value;
+      const status  = document.getElementById('filtro-status').value;
+
+      const filtrados = todos.filter(u => {
+        const ok1 = !busca  || u.nome.toLowerCase().includes(busca) || u.email.toLowerCase().includes(busca);
+        const ok2 = !perfil || u.perfil === perfil;
+        const ok3 = !status || u.status_acesso === status;
+        return ok1 && ok2 && ok3;
+      });
+
+      const perfilBadge = p => {
+        const m = { ADMIN: 'bg-purple-100 text-purple-800', GESTOR: 'bg-blue-100 text-blue-800', USUARIO: 'bg-slate-100 text-slate-700' };
+        return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m[p] || ''}">${p}</span>`;
+      };
+      const statusBadge = s => {
+        const m = { CONVIDADO: 'bg-yellow-100 text-yellow-800', ATIVO: 'bg-green-100 text-green-800', INATIVO: 'bg-gray-100 text-gray-700', BLOQUEADO: 'bg-red-100 text-red-800' };
+        return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m[s] || ''}">${s}</span>`;
+      };
+
+      Utils.renderTable(document.getElementById('tbody'), filtrados, u => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-5 py-3 text-slate-500 font-mono text-xs">${u.codigo}</td>
+          <td class="px-5 py-3 font-medium text-slate-800">${u.nome}</td>
+          <td class="px-5 py-3 text-slate-600">${u.email}</td>
+          <td class="px-5 py-3">${perfilBadge(u.perfil)}</td>
+          <td class="px-5 py-3">${statusBadge(u.status_acesso)}</td>
+          <td class="px-5 py-3 text-slate-500 text-xs">${Utils.formatDateTime(u.ultimo_login_em)}</td>
+          <td class="px-5 py-3">
+            <button onclick='editarUsuario(${JSON.stringify(u)})'
+              class="text-blue-600 hover:text-blue-800 text-xs font-medium">Editar</button>
+          </td>
+        </tr>`);
+    }
+
+    // Modal convidar
+    let centrosData = [], cartoesData = [];
+
+    async function abrirModal() {
+      document.getElementById('form-invite').reset();
+      document.getElementById('msg-modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('hidden');
+
+      const [{ data: cc }, { data: cart }] = await Promise.all([
+        supabase.from('centros_custo').select('id, codigo, nome').eq('ativo', true).order('nome'),
+        supabase.from('cartoes_credito').select('id, codigo, nome, ultimos_4_digitos').eq('ativo', true).order('nome'),
+      ]);
+      centrosData = cc || []; cartoesData = cart || [];
+
+      document.getElementById('centros-list').innerHTML = centrosData.map(c => `
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" name="centro" value="${c.id}" class="rounded text-blue-600">
+          <span class="text-slate-700">${c.codigo} – ${c.nome}</span>
+          <select name="papel_${c.id}" class="ml-auto text-xs border border-slate-200 rounded px-1 py-0.5">
+            <option value="MEMBRO">Membro</option>
+            <option value="GESTOR">Gestor</option>
+          </select>
+        </label>`).join('') || '<p class="text-xs text-slate-400">Nenhum centro ativo.</p>';
+
+      document.getElementById('cartoes-list').innerHTML = cartoesData.map(c => `
+        <label class="flex items-center gap-2 text-sm cursor-pointer">
+          <input type="checkbox" name="cartao" value="${c.id}" class="rounded text-blue-600">
+          <span class="text-slate-700">${c.nome} ••••${c.ultimos_4_digitos}</span>
+        </label>`).join('') || '<p class="text-xs text-slate-400">Nenhum cartão ativo.</p>';
+    }
+
+    function fecharModal() { document.getElementById('modal').classList.add('hidden'); }
+
+    document.getElementById('form-invite').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-invite');
+      const msg = document.getElementById('msg-modal');
+      btn.disabled = true; btn.textContent = 'Enviando…';
+      msg.classList.add('hidden');
+
+      const centrosSel = [...document.querySelectorAll('input[name="centro"]:checked')].map(el => ({
+        centro_custo_id: el.value,
+        papel_no_centro: document.querySelector(`select[name="papel_${el.value}"]`).value,
+      }));
+      const cartoesSel = [...document.querySelectorAll('input[name="cartao"]:checked')].map(el => el.value);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${FUNCTIONS_URL}/admin-create-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({
+          nome: document.getElementById('inv-nome').value.trim(),
+          email: document.getElementById('inv-email').value.trim(),
+          perfil: document.getElementById('inv-perfil').value,
+          centros_custo: centrosSel,
+          cartoes: cartoesSel,
+        }),
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
+        msg.textContent = result.error || 'Erro ao enviar convite.';
+        msg.classList.remove('hidden');
+        btn.disabled = false; btn.textContent = 'Enviar Convite';
+        return;
+      }
+
+      Utils.toast('Convite enviado com sucesso!');
+      fecharModal();
+      carregarUsuarios();
+    });
+
+    // Modal editar
+    function editarUsuario(u) {
+      document.getElementById('edit-id').value      = u.id;
+      document.getElementById('edit-nome').value    = u.nome;
+      document.getElementById('edit-status').value  = u.status_acesso;
+      document.getElementById('edit-perfil').value  = u.perfil;
+      document.getElementById('modal-edit').classList.remove('hidden');
+    }
+    function fecharModalEdit() { document.getElementById('modal-edit').classList.add('hidden'); }
+
+    async function salvarEdicao() {
+      const id     = document.getElementById('edit-id').value;
+      const nome   = document.getElementById('edit-nome').value.trim();
+      const status = document.getElementById('edit-status').value;
+      const perfil = document.getElementById('edit-perfil').value;
+
+      const { error } = await supabase.from('usuarios')
+        .update({ nome, status_acesso: status, perfil })
+        .eq('id', id);
+
+      if (error) { Utils.toast(error.message, 'error'); return; }
+      Utils.toast('Usuário atualizado!');
+      fecharModalEdit();
+      carregarUsuarios();
+    }
+
+    // Filtros reativos
+    document.getElementById('busca').addEventListener('input', Utils.debounce(renderizar));
+    document.getElementById('filtro-perfil').addEventListener('change', renderizar);
+    document.getElementById('filtro-status').addEventListener('change', renderizar);
+
+    (async () => {
+      const user = await Layout.init('usuarios', ['ADMIN']);
+      if (!user) return;
+      await carregarUsuarios();
+    })();
+  </script>
+</body>
+</html>

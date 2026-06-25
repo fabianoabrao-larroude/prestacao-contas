@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+</head>
+<body class="bg-slate-50">
+
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+      <p class="text-sm text-slate-500">Carregando…</p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden flex h-screen overflow-hidden">
+    <div id="sidebar-container" class="flex-shrink-0"></div>
+
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-6xl mx-auto">
+
+        <!-- Header -->
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-slate-900">Dashboard</h1>
+          <p class="text-sm text-slate-500 mt-1" id="subtitulo">Visão geral das despesas</p>
+        </div>
+
+        <!-- Filtro de competência -->
+        <div class="flex items-center gap-3 mb-6">
+          <label class="text-sm font-medium text-slate-600">Competência:</label>
+          <input type="month" id="filtro-competencia"
+            class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button onclick="carregarDados()" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">
+            Filtrar
+          </button>
+        </div>
+
+        <!-- Cards de resumo -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total</p>
+            <p class="text-2xl font-bold text-slate-900 mt-2" id="card-total">–</p>
+            <p class="text-xs text-slate-400 mt-1" id="card-total-qtd">– despesas</p>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Enviadas</p>
+            <p class="text-2xl font-bold text-slate-900 mt-2" id="card-enviadas">–</p>
+            <p class="text-xs text-slate-400 mt-1" id="card-enviadas-qtd">– aguardando aprovação</p>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <p class="text-xs font-semibold text-green-600 uppercase tracking-wider">Aprovadas</p>
+            <p class="text-2xl font-bold text-slate-900 mt-2" id="card-aprovadas">–</p>
+            <p class="text-xs text-slate-400 mt-1" id="card-aprovadas-qtd">– despesas</p>
+          </div>
+          <div class="bg-white rounded-xl border border-slate-200 p-5">
+            <p class="text-xs font-semibold text-red-600 uppercase tracking-wider">Reprovadas</p>
+            <p class="text-2xl font-bold text-slate-900 mt-2" id="card-reprovadas">–</p>
+            <p class="text-xs text-slate-400 mt-1" id="card-reprovadas-qtd">– despesas</p>
+          </div>
+        </div>
+
+        <!-- Ações rápidas -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8" id="acoes-rapidas">
+          <a href="despesa-form.html" class="flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all group">
+            <div class="w-10 h-10 bg-blue-50 group-hover:bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors">
+              <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800">Nova Despesa</p>
+              <p class="text-xs text-slate-500">Registrar uma despesa</p>
+            </div>
+          </a>
+          <a href="despesas.html" class="flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all group">
+            <div class="w-10 h-10 bg-slate-50 group-hover:bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors">
+              <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800">Minhas Despesas</p>
+              <p class="text-xs text-slate-500">Ver todas as despesas</p>
+            </div>
+          </a>
+          <a href="aprovacoes.html" id="link-aprovacoes" class="flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-5 hover:border-blue-300 hover:shadow-sm transition-all group">
+            <div class="w-10 h-10 bg-orange-50 group-hover:bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors">
+              <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-medium text-slate-800">Aprovações Pendentes</p>
+              <p class="text-xs text-slate-500" id="qtd-pendentes-aprovacao">– aguardando</p>
+            </div>
+          </a>
+        </div>
+
+        <!-- Últimas despesas -->
+        <div class="bg-white rounded-xl border border-slate-200">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-800">Últimas Despesas</h2>
+            <a href="despesas.html" class="text-xs text-blue-600 hover:underline">Ver todas →</a>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fornecedor</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Centro de Custo</th>
+                  <th class="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-despesas" class="divide-y divide-slate-100">
+                <tr><td colspan="5" class="px-5 py-8 text-center text-sm text-slate-400">Carregando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    async function carregarDados() {
+      const comp = document.getElementById('filtro-competencia').value; // YYYY-MM
+
+      // Query base de despesas
+      let query = supabase
+        .from('despesas')
+        .select('id, data_despesa, fornecedor, valor, status, competencia, centros_custo(nome)')
+        .order('created_at', { ascending: false });
+
+      if (comp) query = query.eq('competencia', comp);
+
+      // USUARIO só vê as próprias (RLS já garante, mas limitamos a 10 no dashboard)
+      const { data: despesas } = await query.limit(10);
+
+      // Calcular totais (query sem limit para cards)
+      let totQuery = supabase.from('despesas').select('valor, status');
+      if (comp) totQuery = totQuery.eq('competencia', comp);
+      const { data: todas } = await totQuery;
+
+      const stats = { total: 0, enviadas: 0, aprovadas: 0, reprovadas: 0, qtd: 0, qEnv: 0, qApr: 0, qRep: 0 };
+      (todas || []).forEach(d => {
+        stats.total += Number(d.valor); stats.qtd++;
+        if (d.status === 'ENVIADA')   { stats.enviadas  += Number(d.valor); stats.qEnv++; }
+        if (d.status === 'APROVADA')  { stats.aprovadas += Number(d.valor); stats.qApr++; }
+        if (d.status === 'REPROVADA') { stats.reprovadas+= Number(d.valor); stats.qRep++; }
+      });
+
+      document.getElementById('card-total').textContent     = Utils.formatCurrency(stats.total);
+      document.getElementById('card-total-qtd').textContent = `${stats.qtd} despesa(s)`;
+      document.getElementById('card-enviadas').textContent   = Utils.formatCurrency(stats.enviadas);
+      document.getElementById('card-enviadas-qtd').textContent = `${stats.qEnv} aguardando aprovação`;
+      document.getElementById('card-aprovadas').textContent  = Utils.formatCurrency(stats.aprovadas);
+      document.getElementById('card-aprovadas-qtd').textContent = `${stats.qApr} despesa(s)`;
+      document.getElementById('card-reprovadas').textContent = Utils.formatCurrency(stats.reprovadas);
+      document.getElementById('card-reprovadas-qtd').textContent = `${stats.qRep} despesa(s)`;
+      document.getElementById('qtd-pendentes-aprovacao').textContent = `${stats.qEnv} aguardando`;
+
+      // Tabela
+      const tbody = document.getElementById('tbody-despesas');
+      if (!despesas?.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="px-5 py-8 text-center text-sm text-slate-400">Nenhuma despesa no período.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = despesas.map(d => `
+        <tr class="hover:bg-slate-50 cursor-pointer" onclick="window.location='despesa-form.html?id=${d.id}'">
+          <td class="px-5 py-3 text-slate-700">${Utils.formatDate(d.data_despesa)}</td>
+          <td class="px-5 py-3 text-slate-800 font-medium">${d.fornecedor}</td>
+          <td class="px-5 py-3 text-slate-600">${d.centros_custo?.nome || '–'}</td>
+          <td class="px-5 py-3 text-right font-medium text-slate-900">${Utils.formatCurrency(d.valor)}</td>
+          <td class="px-5 py-3">${Utils.statusBadge(d.status)}</td>
+        </tr>`).join('');
+    }
+
+    (async () => {
+      currentUser = await Layout.init('dashboard');
+      if (!currentUser) return;
+
+      // Mostrar/ocultar link aprovações
+      if (!['ADMIN','GESTOR'].includes(currentUser.perfil)) {
+        document.getElementById('link-aprovacoes').classList.add('hidden');
+      }
+
+      // Competência padrão: mês atual
+      const hoje = new Date();
+      const comp = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+      document.getElementById('filtro-competencia').value = comp;
+
+      await carregarDados();
+    })();
+  </script>
+</body>
+</html>

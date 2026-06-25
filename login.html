@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center">
+
+  <div class="w-full max-w-sm px-4">
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+
+      <!-- Logo / cabeçalho -->
+      <div class="text-center mb-6">
+        <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <h1 class="text-xl font-bold text-slate-900">Prestação de Contas</h1>
+        <p class="text-sm text-slate-500 mt-1">Sistema Corporativo</p>
+      </div>
+
+      <!--
+        Aviso de configuração inválida.
+        Visível apenas quando config.js não está preenchido corretamente.
+        Ocultado por JS quando a config é válida.
+      -->
+      <div id="config-warning" class="hidden mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 mt-0.5">
+            <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-amber-800">Configuração pendente</p>
+            <p class="text-xs text-amber-700 mt-1" id="config-warning-reason">
+              config.js não está preenchido.
+            </p>
+            <div class="mt-3 text-xs text-amber-800 space-y-1">
+              <p class="font-medium">Para corrigir:</p>
+              <ol class="list-decimal list-inside space-y-1 text-amber-700">
+                <li>Abra o <strong>Supabase Dashboard → Settings → API</strong></li>
+                <li>Copie o <strong>Project URL</strong> e cole em <code class="bg-amber-100 px-1 rounded">SUPABASE_URL</code></li>
+                <li>Copie a chave <strong>anon / public</strong> e cole em <code class="bg-amber-100 px-1 rounded">SUPABASE_ANON_KEY</code></li>
+                <li>Salve <strong>config.js</strong> e recarregue esta página</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Formulário de login -->
+      <form id="form" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
+          <input id="email" type="email" required autocomplete="email"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+            placeholder="seu@empresa.com">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Senha</label>
+          <input id="senha" type="password" required autocomplete="current-password"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:text-slate-400"
+            placeholder="••••••••">
+        </div>
+
+        <!-- Mensagem de erro de autenticação (credenciais erradas, rede, etc.) -->
+        <div id="erro" class="hidden text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></div>
+
+        <button id="btn" type="submit"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          Entrar
+        </button>
+      </form>
+
+    </div>
+    <p class="text-center text-xs text-slate-400 mt-4">Acesso restrito a usuários autorizados.</p>
+  </div>
+
+  <script>
+    // ── Verificar configuração ─────────────────────────────────
+    // Camadas de verificação em ordem:
+    // 1. config.js carregou e parseou (validateAppConfig existe)
+    // 2. SUPABASE_URL e SUPABASE_ANON_KEY são valores reais, não placeholder
+    // 3. SDK CDN carregou e o cliente foi instanciado (supabase.auth existe)
+    function checkConfig() {
+      if (typeof validateAppConfig !== 'function') {
+        return {
+          valid: false,
+          reason: 'config.js não pôde ser carregado ou contém erro de sintaxe. Recarregue a página com Ctrl+Shift+R.',
+        };
+      }
+
+      const result = validateAppConfig();
+      if (!result.valid) return result;
+
+      // Verifica se o cliente foi instanciado. Se o CDN falhou ao carregar,
+      // supabase será null mesmo com credenciais corretas.
+      if (typeof supabase === 'undefined' || supabase === null || typeof supabase.auth === 'undefined') {
+        return {
+          valid: false,
+          reason: 'O SDK do Supabase não carregou (cdn.jsdelivr.net). Verifique sua conexão e recarregue a página com Ctrl+Shift+R.',
+        };
+      }
+
+      return { valid: true, reason: null };
+    }
+
+    function mostrarAvisoConfig(reason) {
+      const warning = document.getElementById('config-warning');
+      const reasonEl = document.getElementById('config-warning-reason');
+      reasonEl.textContent = reason;
+      warning.classList.remove('hidden');
+
+      // Desabilitar campos e botão — não faz sentido tentar logar
+      document.getElementById('email').disabled = true;
+      document.getElementById('senha').disabled = true;
+      document.getElementById('btn').disabled = true;
+      document.getElementById('btn').textContent = 'Configuração pendente';
+    }
+
+    function mostrarErroLogin(msg) {
+      const el = document.getElementById('erro');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function ocultarErroLogin() {
+      document.getElementById('erro').classList.add('hidden');
+    }
+
+    // ── Inicialização ──────────────────────────────────────────
+    const configCheck = checkConfig();
+
+    if (!configCheck.valid) {
+      // Config inválida: mostrar aviso e parar aqui.
+      // Nenhuma chamada ao Supabase será feita.
+      console.error('[login.html] Configuração inválida:', configCheck.reason);
+      mostrarAvisoConfig(configCheck.reason);
+    } else {
+      // Config válida: verificar sessão existente e redirecionar se já logado.
+      // Usamos optional chaining para não quebrar se supabase for null por
+      // algum motivo inesperado fora do fluxo normal de validateAppConfig().
+      supabase?.auth.getSession().then(({ data: { session } }) => {
+        if (session) window.location.href = 'dashboard.html';
+      }).catch(err => {
+        // Falha de rede no getSession não deve impedir o formulário de aparecer.
+        console.warn('[login.html] Não foi possível verificar sessão existente:', err.message);
+      });
+    }
+
+    // ── Submit do formulário ───────────────────────────────────
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Dupla verificação: config pode ter sido editada após o carregamento
+      // (improvável, mas defensivo).
+      const cfg = checkConfig();
+      if (!cfg.valid) {
+        mostrarAvisoConfig(cfg.reason);
+        return;
+      }
+
+      // supabase não deveria ser null aqui, mas guard explícito evita TypeError
+      if (!supabase) {
+        mostrarAvisoConfig('O cliente Supabase não foi inicializado. Verifique config.js.');
+        return;
+      }
+
+      const btn = document.getElementById('btn');
+      ocultarErroLogin();
+      btn.disabled = true;
+      btn.textContent = 'Entrando…';
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({
+          email:    document.getElementById('email').value.trim(),
+          password: document.getElementById('senha').value,
+        });
+
+        if (error) {
+          const msgs = {
+            'Invalid login credentials': 'E-mail ou senha incorretos.',
+            'Email not confirmed':        'Confirme seu e-mail antes de entrar.',
+            'Too many requests':          'Muitas tentativas. Aguarde alguns minutos.',
+          };
+          mostrarErroLogin(msgs[error.message] || error.message);
+          btn.disabled = false;
+          btn.textContent = 'Entrar';
+          return;
+        }
+
+        window.location.href = 'dashboard.html';
+
+      } catch (err) {
+        // Timeout de rede ou erro inesperado
+        console.error('[login.html] Erro no signInWithPassword:', err.message);
+        mostrarErroLogin('Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    });
+  </script>
+</body>
+</html>

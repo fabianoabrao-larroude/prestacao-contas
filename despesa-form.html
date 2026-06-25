@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Despesa – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div><p class="text-sm text-slate-500">Carregando…</p></div>
+  </div>
+  <div id="app" class="hidden flex h-screen overflow-hidden">
+    <div id="sidebar-container" class="flex-shrink-0"></div>
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-3xl mx-auto">
+
+        <!-- Header -->
+        <div class="flex items-center gap-3 mb-6">
+          <a href="despesas.html" class="text-slate-400 hover:text-slate-600 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </a>
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900" id="page-title">Nova Despesa</h1>
+            <div class="flex items-center gap-2 mt-1">
+              <p class="text-sm text-slate-500" id="page-sub">Preencha os dados e anexe os comprovantes</p>
+              <span id="status-badge"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alerta de reprovação -->
+        <div id="alerta-reprovacao" class="hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-5">
+          <p class="text-sm font-medium text-red-800">Despesa reprovada</p>
+          <p class="text-sm text-red-600 mt-1" id="motivo-reprovacao-texto"></p>
+        </div>
+
+        <!-- Formulário -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6 mb-5">
+          <h2 class="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider">Dados da Despesa</h2>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Data da Despesa *</label>
+              <input id="data-despesa" type="date" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Competência (mês/fatura) *</label>
+              <input id="competencia" type="month" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Fornecedor *</label>
+              <input id="fornecedor" type="text" required placeholder="Nome do fornecedor"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Descrição *</label>
+              <textarea id="descricao" rows="2" required placeholder="Descreva a despesa"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Valor (R$) *</label>
+              <input id="valor" type="number" min="0.01" step="0.01" required placeholder="0,00"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Cartão *</label>
+              <select id="cartao" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecione…</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Centro de Custo *</label>
+              <select id="centro-custo" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecione…</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Conta de Despesa *</label>
+              <select id="conta-despesa" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecione…</option>
+              </select>
+            </div>
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Observação</label>
+              <textarea id="observacao" rows="2" placeholder="Observações adicionais (opcional)"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Anexos -->
+        <div class="bg-white rounded-xl border border-slate-200 p-6 mb-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-sm font-semibold text-slate-700 uppercase tracking-wider">Comprovantes / Anexos</h2>
+              <p class="text-xs text-slate-500 mt-0.5">PDF, JPG, PNG, WEBP • máx. 10 MB por arquivo • máx. 5 arquivos</p>
+            </div>
+            <span id="qtd-anexos-badge" class="text-xs text-slate-500">0 / 5</span>
+          </div>
+
+          <!-- Área de upload (só aparece quando editável) -->
+          <div id="upload-area" class="hidden">
+            <label for="file-input" class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+              <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+              <p class="text-sm text-slate-500">Clique para selecionar ou arraste arquivos</p>
+              <p class="text-xs text-slate-400 mt-1">PDF, JPG, PNG, WEBP</p>
+            </label>
+            <input id="file-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" class="hidden">
+          </div>
+
+          <!-- Lista de arquivos pendentes (antes de salvar) -->
+          <div id="files-pendentes" class="hidden mt-3">
+            <p class="text-xs font-medium text-slate-500 mb-2">Aguardando upload:</p>
+            <div id="list-pendentes" class="space-y-2"></div>
+          </div>
+
+          <!-- Anexos salvos -->
+          <div id="anexos-salvos" class="mt-3 space-y-2"></div>
+        </div>
+
+        <!-- Barra de ações -->
+        <div id="barra-acoes" class="flex gap-3">
+          <a href="despesas.html" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+            Voltar
+          </a>
+          <div class="flex-1 flex gap-3 justify-end" id="btns-acoes"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const despesaId = params.get('id');
+    let currentUser = null;
+    let despesa = null;
+    let anexos = [];
+    let filesPendentes = [];
+    let editavel = false;
+    let uploadInitialized = false; // guard: evita registrar listener duplo
+
+    // ── Inicialização ──────────────────────────────────────────
+    async function init() {
+      currentUser = await Layout.init('despesas');
+      if (!currentUser) return;
+
+      await carregarSelects();
+
+      if (despesaId) {
+        await carregarDespesa();
+      } else {
+        // Nova despesa: pré-preencher data e competência
+        const hoje = new Date();
+        document.getElementById('data-despesa').value =
+          hoje.toISOString().split('T')[0];
+        document.getElementById('competencia').value =
+          `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+        editavel = true;
+        renderAcoes();
+        // Mostrar upload imediatamente: arquivos em filesPendentes contam
+        // como comprovante válido para o fluxo de envio em nova despesa.
+        document.getElementById('upload-area').classList.remove('hidden');
+        inicializarUpload();
+      }
+    }
+
+    async function carregarSelects() {
+      // Centros e cartões: sempre filtrados pelos vínculos do usuário logado,
+      // independente do perfil. ADMIN/GESTOR/USUARIO só veem o que está em
+      // usuario_centros_custo e usuario_cartoes com ativo = true.
+      // A RLS de INSERT em despesas exige esses vínculos para qualquer perfil.
+      // Conta de Despesa não tem vínculo por usuário — lista todas as ativas.
+      const [{ data: ucc }, { data: uc }, { data: cd }] = await Promise.all([
+        supabase.from('usuario_centros_custo')
+          .select('centro_custo_id, centros_custo(id, codigo, nome)')
+          .eq('usuario_id', currentUser.id)
+          .eq('ativo', true),
+        supabase.from('usuario_cartoes')
+          .select('cartao_id, cartoes_credito(id, nome, ultimos_4_digitos)')
+          .eq('usuario_id', currentUser.id)
+          .eq('ativo', true),
+        supabase.from('contas_despesa')
+          .select('id, nome')
+          .eq('ativo', true)
+          .order('nome'),
+      ]);
+
+      // Centros de custo vinculados
+      const centros = (ucc || [])
+        .map(r => r.centros_custo)
+        .filter(Boolean)
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+
+      const selCC = document.getElementById('centro-custo');
+      if (centros.length) {
+        Utils.populateSelect(selCC, centros, 'id', 'nome');
+      } else {
+        selCC.innerHTML = '<option value="">Sem centros vinculados</option>';
+        selCC.disabled = true;
+        Utils.toast('Você não possui centro de custo vinculado. Solicite acesso ao administrador.', 'warning');
+      }
+
+      // Cartões vinculados
+      const cartoes = (uc || [])
+        .map(r => r.cartoes_credito)
+        .filter(Boolean)
+        .sort((a, b) => a.nome.localeCompare(b.nome));
+
+      const selCart = document.getElementById('cartao');
+      if (cartoes.length) {
+        selCart.innerHTML = '<option value="">Selecione…</option>';
+        cartoes.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = `${c.nome} ••••${c.ultimos_4_digitos}`;
+          selCart.appendChild(opt);
+        });
+      } else {
+        selCart.innerHTML = '<option value="">Sem cartões vinculados</option>';
+        selCart.disabled = true;
+        Utils.toast('Você não possui cartão vinculado. Solicite acesso ao administrador.', 'warning');
+      }
+
+      // Contas de despesa — sem filtro por usuário
+      Utils.populateSelect(document.getElementById('conta-despesa'), cd || [], 'id', 'nome');
+    }
+
+    async function carregarDespesa() {
+      const { data, error } = await supabase
+        .from('despesas')
+        .select(`*, centros_custo(nome), contas_despesa(nome), cartoes_credito(nome, ultimos_4_digitos),
+                 usuarios!despesas_usuario_id_fkey(nome),
+                 aprovador:usuarios!despesas_aprovado_por_usuario_id_fkey(nome)`)
+        .eq('id', despesaId)
+        .single();
+
+      if (error || !data) { Utils.toast('Despesa não encontrada.', 'error'); return; }
+      despesa = data;
+
+      editavel = ['RASCUNHO', 'REPROVADA'].includes(despesa.status)
+        && (currentUser.perfil === 'ADMIN' || despesa.usuario_id === currentUser.id);
+
+      // Preencher campos
+      document.getElementById('page-title').textContent = `Despesa – ${despesa.fornecedor}`;
+      document.getElementById('status-badge').innerHTML = Utils.statusBadge(despesa.status);
+      document.getElementById('data-despesa').value  = despesa.data_despesa;
+      document.getElementById('competencia').value   = despesa.competencia;
+      document.getElementById('fornecedor').value    = despesa.fornecedor;
+      document.getElementById('descricao').value     = despesa.descricao;
+      document.getElementById('valor').value         = despesa.valor;
+      document.getElementById('observacao').value    = despesa.observacao || '';
+      document.getElementById('cartao').value        = despesa.cartao_id;
+      document.getElementById('centro-custo').value  = despesa.centro_custo_id;
+      document.getElementById('conta-despesa').value = despesa.conta_despesa_id;
+
+      if (despesa.status === 'REPROVADA' && despesa.motivo_reprovacao) {
+        document.getElementById('alerta-reprovacao').classList.remove('hidden');
+        document.getElementById('motivo-reprovacao-texto').textContent = despesa.motivo_reprovacao;
+      }
+
+      // Campos readonly se não editável
+      if (!editavel) {
+        ['data-despesa','competencia','fornecedor','descricao','valor','observacao','cartao','centro-custo','conta-despesa']
+          .forEach(id => { const el = document.getElementById(id); if (el) el.disabled = true; });
+      }
+
+      await carregarAnexos();
+      renderAcoes();
+
+      if (editavel) {
+        document.getElementById('upload-area').classList.remove('hidden');
+        inicializarUpload();
+      }
+    }
+
+    async function carregarAnexos() {
+      const { data } = await supabase
+        .from('despesa_anexos')
+        .select('*')
+        .eq('despesa_id', despesaId)
+        .order('created_at');
+      anexos = data || [];
+      renderAnexos();
+    }
+
+    function atualizarContador() {
+      document.getElementById('qtd-anexos-badge').textContent =
+        `${anexos.length + filesPendentes.length} / 5`;
+    }
+
+    function renderAnexos() {
+      atualizarContador();
+      const container = document.getElementById('anexos-salvos');
+      if (!anexos.length) {
+        container.innerHTML = editavel
+          ? '<p class="text-xs text-slate-400 text-center py-2">Nenhum anexo ainda. Selecione arquivos acima.</p>'
+          : '<p class="text-xs text-slate-400">Nenhum anexo.</p>';
+        return;
+      }
+      container.innerHTML = anexos.map(a => `
+        <div class="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+          <div class="flex items-center gap-2 min-w-0">
+            <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+            <div class="min-w-0">
+              <p class="text-xs font-medium text-slate-700 truncate">${a.nome_arquivo}</p>
+              <p class="text-xs text-slate-400">${Utils.formatBytes(a.tamanho_bytes)}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+            <button onclick="downloadAnexo('${a.storage_path}', '${a.nome_arquivo}')"
+              class="text-blue-600 hover:text-blue-800 text-xs font-medium">Baixar</button>
+            ${editavel ? `<button onclick="removerAnexo('${a.id}', '${a.storage_path}')" class="text-red-500 hover:text-red-700 text-xs font-medium">Remover</button>` : ''}
+          </div>
+        </div>`).join('');
+    }
+
+    function inicializarUpload() {
+      if (uploadInitialized) return;
+      uploadInitialized = true;
+      const input = document.getElementById('file-input');
+      input.addEventListener('change', () => {
+        const files = [...input.files];
+        const totalAposMerge = anexos.length + filesPendentes.length + files.length;
+        if (totalAposMerge > 5) {
+          Utils.toast(`Limite de 5 anexos por despesa. Você pode adicionar mais ${5 - anexos.length - filesPendentes.length}.`, 'warning');
+          input.value = '';
+          return;
+        }
+        const invalidos = files.filter(f => f.size > 10 * 1024 * 1024);
+        if (invalidos.length) {
+          Utils.toast('Um ou mais arquivos excedem 10 MB.', 'error');
+          input.value = '';
+          return;
+        }
+        filesPendentes.push(...files);
+        renderPendentes();
+        input.value = '';
+      });
+    }
+
+    function renderPendentes() {
+      atualizarContador();
+      const container = document.getElementById('files-pendentes');
+      const lista     = document.getElementById('list-pendentes');
+      if (!filesPendentes.length) { container.classList.add('hidden'); return; }
+      container.classList.remove('hidden');
+      lista.innerHTML = filesPendentes.map((f, i) => `
+        <div class="flex items-center justify-between px-3 py-2 bg-yellow-50 rounded-lg border border-yellow-200">
+          <div class="flex items-center gap-2 min-w-0">
+            <svg class="w-4 h-4 text-yellow-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div class="min-w-0">
+              <p class="text-xs font-medium text-slate-700 truncate">${f.name}</p>
+              <p class="text-xs text-slate-400">${Utils.formatBytes(f.size)} · pendente</p>
+            </div>
+          </div>
+          <button onclick="removerPendente(${i})" class="text-red-500 hover:text-red-700 text-xs font-medium ml-2 flex-shrink-0">Remover</button>
+        </div>`).join('');
+    }
+
+    function removerPendente(i) {
+      filesPendentes.splice(i, 1);
+      renderPendentes();
+    }
+
+    async function downloadAnexo(path, nome) {
+      const { data, error } = await supabase.storage.from('despesas-anexos').download(path);
+      if (error) { Utils.toast('Erro ao baixar arquivo.', 'error'); return; }
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a'); a.href = url; a.download = nome; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function removerAnexo(id, path) {
+      if (!confirm('Remover este anexo?')) return;
+      await supabase.storage.from('despesas-anexos').remove([path]);
+      await supabase.from('despesa_anexos').delete().eq('id', id);
+      Utils.toast('Anexo removido.');
+      await carregarAnexos();
+    }
+
+    // ── Upload de arquivos ─────────────────────────────────────
+    async function uploadPendentes(dId) {
+      const erros = [];
+      for (const file of filesPendentes) {
+        const ext  = file.name.split('.').pop();
+        const path = `despesas/${dId}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('despesas-anexos')
+          .upload(path, file, { contentType: file.type });
+        if (upErr) { erros.push(file.name); continue; }
+
+        await supabase.from('despesa_anexos').insert({
+          despesa_id: dId,
+          nome_arquivo: file.name,
+          storage_path: path,
+          tipo_arquivo: file.type,
+          tamanho_bytes: file.size,
+          uploaded_by_usuario_id: currentUser.id,
+        });
+      }
+      filesPendentes = [];
+      if (erros.length) Utils.toast(`Falha ao enviar: ${erros.join(', ')}`, 'error');
+    }
+
+    // ── Salvar Rascunho ────────────────────────────────────────
+    async function salvarRascunho() {
+      if (!validarFormulario()) return;
+      const btn = document.getElementById('btn-rascunho');
+      btn.disabled = true; btn.textContent = 'Salvando…';
+
+      const payload = montarPayload('RASCUNHO');
+      let id = despesaId;
+
+      if (!id) {
+        const { data, error } = await supabase.from('despesas').insert({ ...payload, usuario_id: currentUser.id }).select('id').single();
+        if (error) { Utils.toast(error.message, 'error'); btn.disabled = false; btn.textContent = 'Salvar Rascunho'; return; }
+        id = data.id;
+      } else {
+        const { error } = await supabase.from('despesas').update(payload).eq('id', id);
+        if (error) { Utils.toast(error.message, 'error'); btn.disabled = false; btn.textContent = 'Salvar Rascunho'; return; }
+      }
+
+      await uploadPendentes(id);
+      Utils.toast('Rascunho salvo!');
+      if (!despesaId) window.location.href = `despesa-form.html?id=${id}`;
+      else { await carregarAnexos(); renderAcoes(); btn.disabled = false; btn.textContent = 'Salvar Rascunho'; }
+    }
+
+    // ── Enviar para Aprovação ─────────────────────────────────
+    async function enviarParaAprovacao() {
+      if (!validarFormulario()) return;
+
+      // Validar comprovante: arquivos pendentes contam mesmo antes do upload
+      const totalAnexos = anexos.length + filesPendentes.length;
+      if (totalAnexos === 0) {
+        Utils.toast('Obrigatório ao menos um comprovante para enviar.', 'error'); return;
+      }
+
+      if (!confirm('Enviar esta despesa para aprovação? Não será mais possível editá-la.')) return;
+
+      const btn = document.getElementById('btn-enviar');
+      btn.disabled = true; btn.textContent = 'Enviando…';
+
+      // Sempre gravar/atualizar como RASCUNHO primeiro.
+      // Só promovemos para ENVIADA após confirmar que o upload foi gravado.
+      // Isso evita despesas ENVIADA sem anexo se o upload falhar,
+      // e evita o problema de RLS que impede reverter ENVIADA→RASCUNHO pelo próprio usuário.
+      let id = despesaId;
+
+      if (!id) {
+        const payload = montarPayload('RASCUNHO');
+        const { data, error } = await supabase.from('despesas')
+          .insert({ ...payload, usuario_id: currentUser.id }).select('id').single();
+        if (error) {
+          Utils.toast(error.message, 'error');
+          btn.disabled = false; btn.textContent = 'Salvar e Enviar';
+          return;
+        }
+        id = data.id;
+      } else {
+        // Atualiza campos editáveis mantendo status atual (RASCUNHO ou REPROVADA)
+        const statusAtual = despesa?.status === 'REPROVADA' ? 'REPROVADA' : 'RASCUNHO';
+        const payload = montarPayload(statusAtual);
+        const { error } = await supabase.from('despesas').update(payload).eq('id', id);
+        if (error) {
+          Utils.toast(error.message, 'error');
+          btn.disabled = false; btn.textContent = 'Enviar para Aprovação';
+          return;
+        }
+      }
+
+      // Fazer upload dos arquivos pendentes
+      await uploadPendentes(id);
+
+      // Confirmar no banco que há pelo menos 1 anexo
+      const { count } = await supabase.from('despesa_anexos')
+        .select('id', { count: 'exact', head: true }).eq('despesa_id', id);
+
+      if (!count) {
+        // Upload falhou: despesa permanece RASCUNHO (sem necessidade de reverter)
+        Utils.toast('Nenhum comprovante foi salvo. Verifique os arquivos e tente novamente.', 'error');
+        if (!despesaId) {
+          window.location.href = `despesa-form.html?id=${id}`;
+        } else {
+          btn.disabled = false; btn.textContent = 'Enviar para Aprovação';
+        }
+        return;
+      }
+
+      // Upload confirmado: agora sim promover para ENVIADA
+      const { error: errEnvio } = await supabase.from('despesas')
+        .update({ status: 'ENVIADA' }).eq('id', id);
+
+      if (errEnvio) {
+        Utils.toast(`Comprovantes salvos, mas falha ao enviar: ${errEnvio.message}`, 'error');
+        if (!despesaId) window.location.href = `despesa-form.html?id=${id}`;
+        return;
+      }
+
+      Utils.toast('Despesa enviada para aprovação!');
+      window.location.href = 'despesas.html';
+    }
+
+    function montarPayload(status) {
+      return {
+        cartao_id:        document.getElementById('cartao').value,
+        centro_custo_id:  document.getElementById('centro-custo').value,
+        conta_despesa_id: document.getElementById('conta-despesa').value,
+        data_despesa:     document.getElementById('data-despesa').value,
+        competencia:      document.getElementById('competencia').value,
+        fornecedor:       document.getElementById('fornecedor').value.trim(),
+        descricao:        document.getElementById('descricao').value.trim(),
+        valor:            parseFloat(document.getElementById('valor').value),
+        observacao:       document.getElementById('observacao').value.trim() || null,
+        status,
+      };
+    }
+
+    function validarFormulario() {
+      const obrigatorios = ['data-despesa','competencia','fornecedor','descricao','valor','cartao','centro-custo','conta-despesa'];
+      for (const id of obrigatorios) {
+        const el = document.getElementById(id);
+        if (!el.value || el.value === '') {
+          Utils.toast('Preencha todos os campos obrigatórios.', 'error');
+          el.focus(); return false;
+        }
+      }
+      if (parseFloat(document.getElementById('valor').value) <= 0) {
+        Utils.toast('O valor deve ser maior que zero.', 'error'); return false;
+      }
+      return true;
+    }
+
+    function renderAcoes() {
+      const container = document.getElementById('btns-acoes');
+      if (!editavel) { container.innerHTML = ''; return; }
+
+      const temId = !!(despesaId || despesa);
+      container.innerHTML = `
+        <button id="btn-rascunho" onclick="salvarRascunho()"
+          class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+          Salvar Rascunho
+        </button>
+        <button id="btn-enviar" onclick="enviarParaAprovacao()"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+          ${temId ? 'Enviar para Aprovação' : 'Salvar e Enviar'}
+        </button>`;
+
+      // upload-area e inicializarUpload() são controlados exclusivamente em:
+      //   init()           → nova despesa
+      //   carregarDespesa() → despesa existente
+      // renderAcoes() não toca no upload para evitar listener duplo.
+    }
+
+    init();
+  </script>
+</body>
+</html>

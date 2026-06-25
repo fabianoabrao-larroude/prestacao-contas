@@ -13,7 +13,6 @@
   <div class="w-full max-w-sm px-4">
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
 
-      <!-- Cabeçalho fixo -->
       <div class="text-center mb-6">
         <div class="inline-flex items-center justify-center w-12 h-12 bg-blue-600 rounded-xl mb-4">
           <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,17 +24,11 @@
         <p class="text-sm text-slate-500 mt-1">Crie uma senha para acessar o sistema.</p>
       </div>
 
-      <!-- Estado: carregando (padrão inicial) -->
       <div id="estado-loading" class="text-center py-4">
         <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
         <p class="text-sm text-slate-500 mt-2">Verificando link…</p>
       </div>
 
-      <!--
-        Estado: configuração inválida
-        Aparece quando config.js não está preenchido corretamente.
-        Mesma linguagem visual do aviso em login.html.
-      -->
       <div id="estado-config" class="hidden">
         <div class="rounded-xl border border-amber-300 bg-amber-50 p-4">
           <div class="flex items-start gap-3">
@@ -65,11 +58,6 @@
         </div>
       </div>
 
-      <!--
-        Estado: link inválido, expirado ou sem token.
-        Aparece quando não há hash de convite/recovery na URL
-        ou quando o token já foi consumido ou expirou.
-      -->
       <div id="estado-link-invalido" class="hidden">
         <div class="text-center py-2">
           <div class="inline-flex items-center justify-center w-10 h-10 bg-red-100 rounded-full mb-3">
@@ -90,10 +78,6 @@
         </div>
       </div>
 
-      <!--
-        Estado: erro de rede ou timeout.
-        Aparece quando Supabase não responde dentro do prazo.
-      -->
       <div id="estado-erro-rede" class="hidden">
         <div class="text-center py-2">
           <div class="inline-flex items-center justify-center w-10 h-10 bg-orange-100 rounded-full mb-3">
@@ -118,7 +102,6 @@
         </div>
       </div>
 
-      <!-- Estado: formulário de senha -->
       <form id="form" class="hidden space-y-4">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nova senha</label>
@@ -133,7 +116,6 @@
             placeholder="Repita a senha">
         </div>
 
-        <!-- Requisitos de senha (visível como dica, não como bloqueio) -->
         <ul class="text-xs text-slate-400 space-y-0.5 pl-1">
           <li id="req-min" class="flex items-center gap-1.5">
             <span id="req-min-icon" class="text-slate-300">○</span> Mínimo 8 caracteres
@@ -151,7 +133,6 @@
         </button>
       </form>
 
-      <!-- Estado: sucesso -->
       <div id="estado-sucesso" class="hidden text-center py-2">
         <div class="inline-flex items-center justify-center w-10 h-10 bg-green-100 rounded-full mb-3">
           <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,11 +147,8 @@
   </div>
 
   <script>
-    // Tempo máximo de espera por chamadas ao Supabase (ms).
-    // Mesmo valor usado em js/auth.js para consistência.
     const CALLBACK_TIMEOUT_MS = 8000;
 
-    // Referências aos estados da tela
     const estados = {
       loading:      document.getElementById('estado-loading'),
       config:       document.getElementById('estado-config'),
@@ -180,13 +158,11 @@
       sucesso:      document.getElementById('estado-sucesso'),
     };
 
-    // Oculta todos os estados e exibe apenas o solicitado.
     function mostrar(qual) {
       Object.values(estados).forEach(el => el.classList.add('hidden'));
       estados[qual]?.classList.remove('hidden');
     }
 
-    // withTimeout — rejeita se a promise não resolver no prazo.
     function withTimeout(promise, ms = CALLBACK_TIMEOUT_MS) {
       const timeout = new Promise((_, reject) =>
         setTimeout(
@@ -194,12 +170,10 @@
           ms
         )
       );
+
       return Promise.race([promise, timeout]);
     }
 
-    // ── 1. Verificação de configuração ─────────────────────────
-    // Usa typeof para não lançar ReferenceError se config.js
-    // falhou ao parsear (ex.: string não terminada).
     function checkConfig() {
       if (typeof validateAppConfig !== 'function') {
         return {
@@ -207,42 +181,41 @@
           reason: 'config.js não pôde ser carregado ou contém erro de sintaxe.',
         };
       }
-      if (!supabase || typeof supabase.auth === 'undefined') {
-        // validateAppConfig passou, mas o cliente não foi criado —
-        // situação anômala que não deveria ocorrer, mas cobre o caso.
+
+      if (typeof supabase === 'undefined' || !supabase?.auth) {
         return {
           valid: false,
           reason: 'O cliente Supabase não foi inicializado. Verifique config.js.',
         };
       }
+
       return validateAppConfig();
     }
 
-    // ── 2. Exibir estado de config inválida ────────────────────
     function mostrarErroConfig(reason) {
       document.getElementById('config-reason').textContent = reason;
       mostrar('config');
       console.error('[auth-callback] Configuração inválida:', reason);
     }
 
-    // ── 3. Exibir estado de link inválido/expirado ─────────────
     function mostrarLinkInvalido(titulo, detalhe) {
       document.getElementById('link-invalido-titulo').textContent =
         titulo || 'Link inválido ou expirado';
+
       document.getElementById('link-invalido-detalhe').textContent =
         detalhe || 'Este link de convite não é válido ou já foi utilizado.';
+
       mostrar('linkInvalido');
     }
 
-    // ── 4. Exibir estado de erro de rede/timeout ───────────────
     function mostrarErroRede(detalhe) {
       document.getElementById('erro-rede-detalhe').textContent =
         detalhe || 'Não foi possível verificar o link. Verifique sua conexão.';
+
       mostrar('erroRede');
       console.error('[auth-callback] Erro de rede/timeout:', detalhe);
     }
 
-    // ── 5. Indicadores visuais de requisitos de senha ──────────
     function atualizarRequisitos() {
       const senha     = document.getElementById('senha').value;
       const confirmar = document.getElementById('confirmar').value;
@@ -259,26 +232,153 @@
       matchIcon.className   = matchOk ? 'text-green-500' : 'text-slate-300';
     }
 
+    function getHashParams() {
+      const hash = window.location.hash?.startsWith('#')
+        ? window.location.hash.substring(1)
+        : '';
+
+      return new URLSearchParams(hash);
+    }
+
+    function getQueryParams() {
+      return new URLSearchParams(window.location.search || '');
+    }
+
+    function limparTokensDaUrl() {
+      const cleanUrl = `${window.location.origin}${window.location.pathname}`;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+
+    async function validarSessaoAtual() {
+      const { data, error } = await withTimeout(supabase.auth.getUser());
+
+      if (error || !data?.user) {
+        console.error('[auth-callback] Sessão inválida em getUser:', error?.message);
+        return null;
+      }
+
+      return data.user;
+    }
+
+    async function processarTokenDaUrl() {
+      const hashParams = getHashParams();
+      const queryParams = getQueryParams();
+
+      const hashError =
+        hashParams.get('error_description') ||
+        hashParams.get('error');
+
+      if (hashError) {
+        console.error('[auth-callback] Erro recebido no hash:', hashError);
+
+        return {
+          ok: false,
+          reason: hashError,
+        };
+      }
+
+      const accessToken  = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type         = hashParams.get('type');
+
+      if (accessToken && refreshToken) {
+        console.log('[auth-callback] Token encontrado no hash:', { type });
+
+        const { data, error } = await withTimeout(
+          supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+        );
+
+        if (error || !data?.session) {
+          console.error('[auth-callback] Erro em setSession:', error?.message);
+
+          return {
+            ok: false,
+            reason: error?.message || 'Não foi possível ativar a sessão do convite.',
+          };
+        }
+
+        const user = await validarSessaoAtual();
+
+        if (!user) {
+          return {
+            ok: false,
+            reason: 'Sessão criada, mas o usuário do token não existe mais.',
+          };
+        }
+
+        limparTokensDaUrl();
+
+        return {
+          ok: true,
+          user,
+        };
+      }
+
+      const code = queryParams.get('code');
+
+      if (code) {
+        console.log('[auth-callback] Code encontrado na URL. Trocando por sessão.');
+
+        const { data, error } = await withTimeout(
+          supabase.auth.exchangeCodeForSession(code)
+        );
+
+        if (error || !data?.session) {
+          console.error('[auth-callback] Erro em exchangeCodeForSession:', error?.message);
+
+          return {
+            ok: false,
+            reason: error?.message || 'Não foi possível trocar o código por sessão.',
+          };
+        }
+
+        const user = await validarSessaoAtual();
+
+        if (!user) {
+          return {
+            ok: false,
+            reason: 'Sessão criada, mas o usuário do token não existe mais.',
+          };
+        }
+
+        limparTokensDaUrl();
+
+        return {
+          ok: true,
+          user,
+        };
+      }
+
+      return {
+        ok: false,
+        reason: 'Nenhum token de convite foi encontrado na URL.',
+        noToken: true,
+      };
+    }
+
     document.getElementById('senha').addEventListener('input', atualizarRequisitos);
     document.getElementById('confirmar').addEventListener('input', atualizarRequisitos);
 
-    // ── 6. Submit: definir senha ───────────────────────────────
     document.getElementById('form').addEventListener('submit', async (e) => {
       e.preventDefault();
 
       const btn    = document.getElementById('btn');
       const msgErr = document.getElementById('msg-erro');
+
       msgErr.classList.add('hidden');
 
       const senha     = document.getElementById('senha').value;
       const confirmar = document.getElementById('confirmar').value;
 
-      // Validações client-side
       if (senha.length < 8) {
         msgErr.textContent = 'A senha deve ter no mínimo 8 caracteres.';
         msgErr.classList.remove('hidden');
         return;
       }
+
       if (senha !== confirmar) {
         msgErr.textContent = 'As senhas não coincidem.';
         msgErr.classList.remove('hidden');
@@ -289,19 +389,33 @@
       btn.textContent = 'Salvando…';
 
       try {
-        // Alterar a senha do usuário autenticado via token de convite
+        const userAntes = await validarSessaoAtual();
+
+        if (!userAntes) {
+          msgErr.textContent =
+            'Sessão do convite inválida ou expirada. Solicite um novo convite ao administrador.';
+          msgErr.classList.remove('hidden');
+          btn.disabled = false;
+          btn.textContent = 'Definir senha e entrar';
+          return;
+        }
+
         const { error: updateErr } = await withTimeout(
           supabase.auth.updateUser({ password: senha })
         );
 
         if (updateErr) {
           console.error('[auth-callback] Erro ao atualizar senha:', updateErr.message);
+
           const msgs = {
             'New password should be different from the old password':
               'A nova senha deve ser diferente da senha anterior.',
             'Password should be at least 6 characters':
               'A senha deve ter no mínimo 6 caracteres.',
+            'User from sub claim in JWT does not exist':
+              'Sessão inválida no navegador. Abra novamente o último convite em uma janela anônima ou solicite novo convite.',
           };
+
           msgErr.textContent = msgs[updateErr.message] || updateErr.message;
           msgErr.classList.remove('hidden');
           btn.disabled = false;
@@ -309,48 +423,89 @@
           return;
         }
 
-        // Marcar primeiro acesso na tabela usuarios
         try {
           const { data: authData } = await withTimeout(supabase.auth.getUser());
+
           if (authData?.user) {
-            await withTimeout(
-              supabase.from('usuarios').update({
-                status_acesso:      'ATIVO',
-                primeiro_acesso_em: new Date().toISOString(),
-              }).eq('auth_user_id', authData.user.id)
+            const { error: updateUsuarioErr } = await withTimeout(
+              supabase
+                .from('usuarios')
+                .update({
+                  status_acesso: 'ATIVO',
+                  primeiro_acesso_em: new Date().toISOString(),
+                })
+                .eq('auth_user_id', authData.user.id)
             );
+
+            if (updateUsuarioErr) {
+              console.warn(
+                '[auth-callback] Falha ao atualizar usuarios:',
+                updateUsuarioErr.message
+              );
+            }
           }
         } catch (dbErr) {
-          // Falha ao atualizar primeiro_acesso não impede o login — apenas registra.
-          console.warn('[auth-callback] Não foi possível atualizar primeiro_acesso_em:', dbErr.message);
+          console.warn(
+            '[auth-callback] Não foi possível atualizar primeiro_acesso_em:',
+            dbErr.message
+          );
         }
 
         mostrar('sucesso');
-        setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
+
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 1500);
 
       } catch (err) {
         console.error('[auth-callback] Erro ao definir senha:', err.message);
-        const isTimeout = err.message.startsWith('Timeout:');
+
+        const isTimeout = err.message?.startsWith?.('Timeout:');
+
         msgErr.textContent = isTimeout
-          ? `O servidor não respondeu a tempo. Verifique sua conexão e tente novamente.`
+          ? 'O servidor não respondeu a tempo. Verifique sua conexão e tente novamente.'
           : `Erro ao salvar a senha: ${err.message}`;
+
         msgErr.classList.remove('hidden');
         btn.disabled = false;
         btn.textContent = 'Definir senha e entrar';
       }
     });
 
-    // ── 7. Inicialização ───────────────────────────────────────
     async function init() {
-      // 7a. Validar config antes de qualquer chamada de rede
       const cfg = checkConfig();
+
       if (!cfg.valid) {
         mostrarErroConfig(cfg.reason);
         return;
       }
 
       try {
-        // 7b. Tentar obter sessão já estabelecida pelo Supabase JS ao processar o hash
+        const hashParams = getHashParams();
+        const queryParams = getQueryParams();
+
+        const temTokenNaUrl =
+          hashParams.has('access_token') ||
+          hashParams.has('refresh_token') ||
+          hashParams.has('type') ||
+          queryParams.has('code');
+
+        if (temTokenNaUrl) {
+          const result = await processarTokenDaUrl();
+
+          if (!result.ok) {
+            mostrarLinkInvalido(
+              'Link inválido ou expirado',
+              result.reason ||
+                'O token do convite não pôde ser processado. Solicite um novo convite ao administrador.'
+            );
+            return;
+          }
+
+          mostrar('form');
+          return;
+        }
+
         const { data: { session }, error: sessionErr } = await withTimeout(
           supabase.auth.getSession()
         );
@@ -362,68 +517,35 @@
         }
 
         if (session) {
-          // Sessão ativa: o token do convite/recovery já foi trocado pelo SDK
-          mostrar('form');
-          return;
-        }
+          const user = await validarSessaoAtual();
 
-        // 7c. Sem sessão — verificar se há hash de invite/recovery na URL
-        const hash = window.location.hash;
-        const temToken = hash && (
-          hash.includes('access_token') ||
-          hash.includes('type=invite') ||
-          hash.includes('type=recovery')
-        );
+          if (user) {
+            mostrar('form');
+            return;
+          }
 
-        if (!temToken) {
-          // Página aberta sem nenhum token — URL direta, convite já consumido, etc.
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+          } catch (_err) {
+            // Apenas tentativa de limpar sessão local inválida.
+          }
+
           mostrarLinkInvalido(
-            'Link não encontrado',
-            'Esta página deve ser acessada pelo link enviado ao seu e-mail. Se o link expirou, solicite um novo convite ao administrador.'
+            'Sessão inválida',
+            'Existe uma sessão antiga ou inválida neste navegador. Abra novamente o convite em uma janela anônima ou solicite novo convite.'
           );
           return;
         }
 
-        // 7d. Hash presente: aguardar o SDK processar e emitir o evento de auth
-        // O Supabase JS v2 detecta o hash automaticamente; ouvimos o evento.
-        let eventoRecebido = false;
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-          if (eventoRecebido) return;
-          if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
-            eventoRecebido = true;
-            subscription.unsubscribe();
-            mostrar('form');
-          }
-        });
-
-        // Timeout de fallback: se o evento não chegar em 5s, fazer polling manual
-        setTimeout(async () => {
-          if (eventoRecebido) return;
-          subscription.unsubscribe();
-
-          try {
-            const { data: { session: s2 } } = await withTimeout(
-              supabase.auth.getSession(), 3000
-            );
-            if (s2) {
-              mostrar('form');
-            } else {
-              mostrarLinkInvalido(
-                'Link inválido ou expirado',
-                'O token não pôde ser processado. Links de convite expiram em 24 horas. Solicite um novo convite ao administrador.'
-              );
-            }
-          } catch (pollErr) {
-            console.error('[auth-callback] Timeout no polling:', pollErr.message);
-            mostrarErroRede('O servidor não respondeu. Verifique sua conexão e tente recarregar a página.');
-          }
-        }, 5000);
+        mostrarLinkInvalido(
+          'Link não encontrado',
+          'Esta página deve ser acessada pelo link enviado ao seu e-mail. Se o link expirou, solicite um novo convite ao administrador.'
+        );
 
       } catch (err) {
         console.error('[auth-callback] Erro inesperado em init:', err.message);
 
-        if (err.message.startsWith('Timeout:')) {
+        if (err.message?.startsWith?.('Timeout:')) {
           mostrarErroRede(
             `O servidor não respondeu em ${CALLBACK_TIMEOUT_MS / 1000} segundos. Verifique sua internet e o valor de SUPABASE_URL em config.js.`
           );
@@ -432,27 +554,6 @@
         }
       }
     }
-
-    /*
-     * PENDÊNCIA FUTURA — APP_BASE_URL no redirectTo da Edge Function
-     * ---------------------------------------------------------------
-     * A Edge Function admin-create-user (supabase/functions/admin-create-user/index.ts)
-     * atualmente chama inviteUserByEmail sem passar `redirectTo`, usando o Site URL
-     * configurado no Supabase Dashboard como fallback.
-     *
-     * Quando o ambiente de produção for definido, passar explicitamente:
-     *
-     *   await admin.auth.admin.inviteUserByEmail(email, {
-     *     redirectTo: `${APP_BASE_URL}/auth-callback.html`,
-     *     data: { nome, perfil },
-     *   });
-     *
-     * APP_BASE_URL está definida em config.js e deve ser atualizada para o
-     * domínio de produção antes do deploy. Isso elimina a dependência do
-     * Site URL do Dashboard e torna o redirecionamento explícito e versionável.
-     *
-     * NÃO implementado agora para não alterar a Edge Function fora do escopo.
-     */
 
     init();
   </script>

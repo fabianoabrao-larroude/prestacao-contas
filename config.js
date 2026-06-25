@@ -6,7 +6,7 @@ const SUPABASE_URL = 'https://chqgrqhovhuhhdycboeb.supabase.co';
 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNocWdycWhvdmh1aGhkeWNib2ViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyNzEzNDQsImV4cCI6MjA5Nzg0NzM0NH0.hpf9MIQsavBd84uK5D01fbMJEC9bFOfQ5g0oeGra8k8';
 
-const APP_BASE_URL = 'http://localhost:5500';
+const APP_BASE_URL = 'https://fabianoabrao-larroude.github.io/prestacao-contas';
 
 const FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1`;
 

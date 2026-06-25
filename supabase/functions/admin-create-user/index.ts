@@ -50,8 +50,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
       return json(
         {
-          error:
-            "Variáveis de ambiente do Supabase ausentes na Edge Function.",
+          error: "Variáveis de ambiente do Supabase ausentes na Edge Function.",
         },
         500,
       );
@@ -161,8 +160,7 @@ serve(async (req) => {
       if (!centro?.centro_custo_id) {
         return json(
           {
-            error:
-              "Cada item de centros_custo deve conter centro_custo_id.",
+            error: "Cada item de centros_custo deve conter centro_custo_id.",
           },
           400,
         );
@@ -174,8 +172,7 @@ serve(async (req) => {
       ) {
         return json(
           {
-            error:
-              "papel_no_centro inválido. Use MEMBRO ou GESTOR.",
+            error: "papel_no_centro inválido. Use MEMBRO ou GESTOR.",
           },
           400,
         );
@@ -228,19 +225,22 @@ serve(async (req) => {
       );
     }
 
-    // 8. Gerar código sequencial simples
-    const { count, error: countErr } = await admin
-      .from("usuarios")
-      .select("*", { count: "exact", head: true });
+    // 8. Gerar código sequencial correto via função do banco
+    // Regra: pegar maior USR existente e somar +1.
+    // Exemplo: USR001, USR002, USR003, USR004, USR006 => próximo USR007.
+    const { data: codigo, error: codigoErr } = await admin
+      .rpc("proximo_codigo_usuario");
 
-    if (countErr) {
+    if (codigoErr || !codigo) {
       return json(
-        { error: `Erro ao gerar código do usuário: ${countErr.message}` },
+        {
+          error: `Erro ao gerar código do usuário: ${
+            codigoErr?.message ?? "função proximo_codigo_usuario não retornou código"
+          }`,
+        },
         500,
       );
     }
-
-    const codigo = `USR${String((count ?? 0) + 1).padStart(3, "0")}`;
 
     // 9. Criar registro operacional
     const { data: novoUsuario, error: insertErr } = await admin
@@ -258,6 +258,15 @@ serve(async (req) => {
       .single();
 
     if (insertErr) {
+      console.error("Erro ao criar usuário operacional:", {
+        message: insertErr.message,
+        code: insertErr.code,
+        details: insertErr.details,
+        hint: insertErr.hint,
+        codigo,
+        email,
+      });
+
       return json(
         { error: `Erro ao criar usuário: ${insertErr.message}` },
         500,
@@ -315,6 +324,8 @@ serve(async (req) => {
       usuario: novoUsuario,
     });
   } catch (err) {
+    console.error("Erro interno admin-create-user:", err);
+
     return json(
       {
         error: `Erro interno: ${(err as Error).message}`,

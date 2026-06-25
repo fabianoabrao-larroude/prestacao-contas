@@ -6,7 +6,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -50,7 +51,8 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
       return json(
         {
-          error: "Variáveis de ambiente do Supabase ausentes na Edge Function.",
+          error:
+            "Variáveis de ambiente do Supabase ausentes na Edge Function.",
         },
         500,
       );
@@ -160,7 +162,8 @@ serve(async (req) => {
       if (!centro?.centro_custo_id) {
         return json(
           {
-            error: "Cada item de centros_custo deve conter centro_custo_id.",
+            error:
+              "Cada item de centros_custo deve conter centro_custo_id.",
           },
           400,
         );
@@ -172,17 +175,23 @@ serve(async (req) => {
       ) {
         return json(
           {
-            error: "papel_no_centro inválido. Use MEMBRO ou GESTOR.",
+            error:
+              "papel_no_centro inválido. Use MEMBRO ou GESTOR.",
           },
           400,
         );
       }
     }
 
-    // 6. Verificar duplicidade de e-mail na tabela operacional
+    const appBaseUrl = getAppBaseUrl(req);
+    const redirectTo = `${appBaseUrl}/auth-callback.html`;
+
+    // 6. Verificar se o e-mail já existe na tabela operacional
     const { data: existingUser, error: existingUserErr } = await admin
       .from("usuarios")
-      .select("id")
+      .select(
+        "id, auth_user_id, codigo, nome, email, perfil, status_acesso, ativo",
+      )
       .eq("email", email)
       .maybeSingle();
 
@@ -195,16 +204,84 @@ serve(async (req) => {
       );
     }
 
+    /*
+     * 6a. Reinvite / tratamento de usuário já existente
+     *
+     * Regras:
+     * - ATIVO: não reenviar convite.
+     * - INATIVO: não reativar automaticamente.
+     * - CONVIDADO: reenviar link de definição de senha.
+     */
     if (existingUser) {
-      return json({ error: "E-mail já cadastrado no sistema." }, 409);
+      if (!existingUser.ativo) {
+        return json(
+          {
+            error:
+              "Este e-mail já existe no sistema, mas está inativo. Reative o usuário antes de reenviar convite.",
+            usuario: existingUser,
+          },
+          409,
+        );
+      }
+
+      if (existingUser.status_acesso === "ATIVO") {
+        return json(
+          {
+            error: "Usuário já está ativo no sistema.",
+            usuario: existingUser,
+          },
+          409,
+        );
+      }
+
+      if (existingUser.status_acesso === "CONVIDADO") {
+        /*
+         * Para usuário já convidado, não criamos novo registro e não geramos novo código.
+         * Enviamos um novo link de recuperação/definição de senha para o mesmo Auth user/e-mail.
+         */
+        const { error: resetErr } = await admin.auth.resetPasswordForEmail(
+          email,
+          {
+            redirectTo,
+          },
+        );
+
+        if (resetErr) {
+          console.error("Erro ao reenviar link de senha:", {
+            message: resetErr.message,
+            email,
+            usuario: existingUser,
+          });
+
+          return json(
+            {
+              error: `Usuário já existe como convidado, mas houve erro ao reenviar link de senha: ${resetErr.message}`,
+            },
+            500,
+          );
+        }
+
+        return json({
+          success: true,
+          reinvite: true,
+          message: `Novo link de definição de senha enviado para ${email}`,
+          usuario: existingUser,
+        });
+      }
+
+      return json(
+        {
+          error: `E-mail já cadastrado com status_acesso=${existingUser.status_acesso}.`,
+          usuario: existingUser,
+        },
+        409,
+      );
     }
 
-    // 7. Enviar convite via Supabase Auth Admin API
-    const appBaseUrl = getAppBaseUrl(req);
-
+    // 7. Enviar convite via Supabase Auth Admin API para novo usuário
     const { data: inviteData, error: inviteErr } =
       await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${appBaseUrl}/auth-callback.html`,
+        redirectTo,
         data: {
           nome,
           perfil,
@@ -235,7 +312,8 @@ serve(async (req) => {
       return json(
         {
           error: `Erro ao gerar código do usuário: ${
-            codigoErr?.message ?? "função proximo_codigo_usuario não retornou código"
+            codigoErr?.message ??
+              "função proximo_codigo_usuario não retornou código"
           }`,
         },
         500,
@@ -320,6 +398,7 @@ serve(async (req) => {
 
     return json({
       success: true,
+      reinvite: false,
       message: `Convite enviado para ${email}`,
       usuario: novoUsuario,
     });

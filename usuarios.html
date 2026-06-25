@@ -93,6 +93,7 @@
           </svg>
         </button>
       </div>
+
       <form id="form-invite" class="px-6 py-5 space-y-4">
         <div class="grid grid-cols-2 gap-4">
           <div class="col-span-2">
@@ -100,11 +101,13 @@
             <input id="inv-nome" type="text" required
               class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           </div>
+
           <div class="col-span-2">
             <label class="block text-sm font-medium text-slate-700 mb-1">E-mail *</label>
             <input id="inv-email" type="email" required
               class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
           </div>
+
           <div class="col-span-2">
             <label class="block text-sm font-medium text-slate-700 mb-1">Perfil *</label>
             <select id="inv-perfil" required
@@ -138,6 +141,7 @@
             class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
+
           <button type="submit" id="btn-invite"
             class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50">
             Enviar Convite
@@ -158,13 +162,16 @@
           </svg>
         </button>
       </div>
+
       <div class="px-6 py-5 space-y-4">
         <input id="edit-id" type="hidden">
+
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Nome</label>
           <input id="edit-nome" type="text"
             class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
         </div>
+
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Status de Acesso</label>
           <select id="edit-status"
@@ -174,6 +181,7 @@
             <option value="BLOQUEADO">BLOQUEADO</option>
           </select>
         </div>
+
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">Perfil</label>
           <select id="edit-perfil"
@@ -183,11 +191,13 @@
             <option value="USUARIO">USUARIO</option>
           </select>
         </div>
+
         <div class="flex gap-3 pt-2">
           <button onclick="fecharModalEdit()"
             class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
             Cancelar
           </button>
+
           <button onclick="salvarEdicao()"
             class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
             Salvar
@@ -199,42 +209,66 @@
 
   <script>
     let todos = [];
+    let centrosData = [];
+    let cartoesData = [];
 
     async function carregarUsuarios() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('usuarios')
         .select('*')
         .order('nome');
+
+      if (error) {
+        Utils.toast(error.message, 'error');
+        return;
+      }
+
       todos = data || [];
       renderizar();
     }
 
     function renderizar() {
-      const busca   = document.getElementById('busca').value.toLowerCase();
-      const perfil  = document.getElementById('filtro-perfil').value;
-      const status  = document.getElementById('filtro-status').value;
+      const busca = document.getElementById('busca').value.toLowerCase();
+      const perfil = document.getElementById('filtro-perfil').value;
+      const status = document.getElementById('filtro-status').value;
 
       const filtrados = todos.filter(u => {
-        const ok1 = !busca  || u.nome.toLowerCase().includes(busca) || u.email.toLowerCase().includes(busca);
+        const nome = (u.nome || '').toLowerCase();
+        const email = (u.email || '').toLowerCase();
+
+        const ok1 = !busca || nome.includes(busca) || email.includes(busca);
         const ok2 = !perfil || u.perfil === perfil;
         const ok3 = !status || u.status_acesso === status;
+
         return ok1 && ok2 && ok3;
       });
 
       const perfilBadge = p => {
-        const m = { ADMIN: 'bg-purple-100 text-purple-800', GESTOR: 'bg-blue-100 text-blue-800', USUARIO: 'bg-slate-100 text-slate-700' };
+        const m = {
+          ADMIN: 'bg-purple-100 text-purple-800',
+          GESTOR: 'bg-blue-100 text-blue-800',
+          USUARIO: 'bg-slate-100 text-slate-700'
+        };
+
         return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m[p] || ''}">${p}</span>`;
       };
+
       const statusBadge = s => {
-        const m = { CONVIDADO: 'bg-yellow-100 text-yellow-800', ATIVO: 'bg-green-100 text-green-800', INATIVO: 'bg-gray-100 text-gray-700', BLOQUEADO: 'bg-red-100 text-red-800' };
+        const m = {
+          CONVIDADO: 'bg-yellow-100 text-yellow-800',
+          ATIVO: 'bg-green-100 text-green-800',
+          INATIVO: 'bg-gray-100 text-gray-700',
+          BLOQUEADO: 'bg-red-100 text-red-800'
+        };
+
         return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${m[s] || ''}">${s}</span>`;
       };
 
       Utils.renderTable(document.getElementById('tbody'), filtrados, u => `
         <tr class="hover:bg-slate-50">
-          <td class="px-5 py-3 text-slate-500 font-mono text-xs">${u.codigo}</td>
-          <td class="px-5 py-3 font-medium text-slate-800">${u.nome}</td>
-          <td class="px-5 py-3 text-slate-600">${u.email}</td>
+          <td class="px-5 py-3 text-slate-500 font-mono text-xs">${u.codigo || ''}</td>
+          <td class="px-5 py-3 font-medium text-slate-800">${u.nome || ''}</td>
+          <td class="px-5 py-3 text-slate-600">${u.email || ''}</td>
           <td class="px-5 py-3">${perfilBadge(u.perfil)}</td>
           <td class="px-5 py-3">${statusBadge(u.status_acesso)}</td>
           <td class="px-5 py-3 text-slate-500 text-xs">${Utils.formatDateTime(u.ultimo_login_em)}</td>
@@ -242,106 +276,229 @@
             <button onclick='editarUsuario(${JSON.stringify(u)})'
               class="text-blue-600 hover:text-blue-800 text-xs font-medium">Editar</button>
           </td>
-        </tr>`);
+        </tr>
+      `);
     }
 
-    // Modal convidar
-    let centrosData = [], cartoesData = [];
+    function resetarModalInvite() {
+      const form = document.getElementById('form-invite');
+      const btn = document.getElementById('btn-invite');
+      const msg = document.getElementById('msg-modal');
+
+      if (form) {
+        form.reset();
+      }
+
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Enviar Convite';
+      }
+
+      if (msg) {
+        msg.className = 'hidden text-sm px-3 py-2 rounded-lg border';
+        msg.textContent = '';
+      }
+    }
+
+    function mostrarErroModal(texto) {
+      const msg = document.getElementById('msg-modal');
+
+      msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
+      msg.textContent = texto;
+      msg.classList.remove('hidden');
+    }
 
     async function abrirModal() {
-      document.getElementById('form-invite').reset();
-      document.getElementById('msg-modal').classList.add('hidden');
+      resetarModalInvite();
+
+      document.getElementById('centros-list').innerHTML = '<p class="text-xs text-slate-400">Carregando…</p>';
+      document.getElementById('cartoes-list').innerHTML = '<p class="text-xs text-slate-400">Carregando…</p>';
       document.getElementById('modal').classList.remove('hidden');
 
-      const [{ data: cc }, { data: cart }] = await Promise.all([
-        supabase.from('centros_custo').select('id, codigo, nome').eq('ativo', true).order('nome'),
-        supabase.from('cartoes_credito').select('id, codigo, nome, ultimos_4_digitos').eq('ativo', true).order('nome'),
-      ]);
-      centrosData = cc || []; cartoesData = cart || [];
+      try {
+        const [{ data: cc, error: ccError }, { data: cart, error: cartError }] = await Promise.all([
+          supabase
+            .from('centros_custo')
+            .select('id, codigo, nome')
+            .eq('ativo', true)
+            .order('nome'),
 
-      document.getElementById('centros-list').innerHTML = centrosData.map(c => `
-        <label class="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" name="centro" value="${c.id}" class="rounded text-blue-600">
-          <span class="text-slate-700">${c.codigo} – ${c.nome}</span>
-          <select name="papel_${c.id}" class="ml-auto text-xs border border-slate-200 rounded px-1 py-0.5">
-            <option value="MEMBRO">Membro</option>
-            <option value="GESTOR">Gestor</option>
-          </select>
-        </label>`).join('') || '<p class="text-xs text-slate-400">Nenhum centro ativo.</p>';
+          supabase
+            .from('cartoes_credito')
+            .select('id, codigo, nome, ultimos_4_digitos')
+            .eq('ativo', true)
+            .order('nome'),
+        ]);
 
-      document.getElementById('cartoes-list').innerHTML = cartoesData.map(c => `
-        <label class="flex items-center gap-2 text-sm cursor-pointer">
-          <input type="checkbox" name="cartao" value="${c.id}" class="rounded text-blue-600">
-          <span class="text-slate-700">${c.nome} ••••${c.ultimos_4_digitos}</span>
-        </label>`).join('') || '<p class="text-xs text-slate-400">Nenhum cartão ativo.</p>';
+        if (ccError) {
+          mostrarErroModal(`Erro ao carregar centros de custo: ${ccError.message}`);
+          return;
+        }
+
+        if (cartError) {
+          mostrarErroModal(`Erro ao carregar cartões: ${cartError.message}`);
+          return;
+        }
+
+        centrosData = cc || [];
+        cartoesData = cart || [];
+
+        document.getElementById('centros-list').innerHTML = centrosData.map(c => `
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="centro" value="${c.id}" class="rounded text-blue-600">
+            <span class="text-slate-700">${c.codigo} – ${c.nome}</span>
+            <select name="papel_${c.id}" class="ml-auto text-xs border border-slate-200 rounded px-1 py-0.5">
+              <option value="MEMBRO">Membro</option>
+              <option value="GESTOR">Gestor</option>
+            </select>
+          </label>
+        `).join('') || '<p class="text-xs text-slate-400">Nenhum centro ativo.</p>';
+
+        document.getElementById('cartoes-list').innerHTML = cartoesData.map(c => `
+          <label class="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" name="cartao" value="${c.id}" class="rounded text-blue-600">
+            <span class="text-slate-700">${c.nome} ••••${c.ultimos_4_digitos || ''}</span>
+          </label>
+        `).join('') || '<p class="text-xs text-slate-400">Nenhum cartão ativo.</p>';
+
+      } catch (error) {
+        console.error(error);
+        mostrarErroModal(error.message || 'Erro inesperado ao carregar dados do convite.');
+      }
     }
 
-    function fecharModal() { document.getElementById('modal').classList.add('hidden'); }
+    function fecharModal() {
+      document.getElementById('modal').classList.add('hidden');
+      resetarModalInvite();
+    }
 
     document.getElementById('form-invite').addEventListener('submit', async (e) => {
       e.preventDefault();
+
       const btn = document.getElementById('btn-invite');
       const msg = document.getElementById('msg-modal');
-      btn.disabled = true; btn.textContent = 'Enviando…';
-      msg.classList.add('hidden');
 
-      const centrosSel = [...document.querySelectorAll('input[name="centro"]:checked')].map(el => ({
-        centro_custo_id: el.value,
-        papel_no_centro: document.querySelector(`select[name="papel_${el.value}"]`).value,
-      }));
-      const cartoesSel = [...document.querySelectorAll('input[name="cartao"]:checked')].map(el => el.value);
+      try {
+        msg.classList.add('hidden');
+        msg.textContent = '';
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${FUNCTIONS_URL}/admin-create-user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({
-          nome: document.getElementById('inv-nome').value.trim(),
-          email: document.getElementById('inv-email').value.trim(),
-          perfil: document.getElementById('inv-perfil').value,
-          centros_custo: centrosSel,
-          cartoes: cartoesSel,
-        }),
-      });
-      const result = await res.json();
+        const nome = document.getElementById('inv-nome').value.trim();
+        const email = document.getElementById('inv-email').value.trim();
+        const perfil = document.getElementById('inv-perfil').value;
 
-      if (!res.ok) {
-        msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
-        msg.textContent = result.error || 'Erro ao enviar convite.';
-        msg.classList.remove('hidden');
-        btn.disabled = false; btn.textContent = 'Enviar Convite';
-        return;
+        if (!nome) {
+          mostrarErroModal('Informe o nome completo.');
+          return;
+        }
+
+        if (!email) {
+          mostrarErroModal('Informe o e-mail.');
+          return;
+        }
+
+        if (!perfil) {
+          mostrarErroModal('Selecione o perfil.');
+          return;
+        }
+
+        const centrosSel = [...document.querySelectorAll('input[name="centro"]:checked')].map(el => ({
+          centro_custo_id: el.value,
+          papel_no_centro: document.querySelector(`select[name="papel_${el.value}"]`)?.value || 'MEMBRO',
+        }));
+
+        const cartoesSel = [...document.querySelectorAll('input[name="cartao"]:checked')].map(el => el.value);
+
+        btn.disabled = true;
+        btn.textContent = 'Enviando…';
+
+        const {
+          data: { session },
+          error: sessionError,
+        } = await supabase.auth.getSession();
+
+        if (sessionError || !session?.access_token) {
+          mostrarErroModal('Sessão expirada. Faça login novamente.');
+          return;
+        }
+
+        const res = await fetch(`${FUNCTIONS_URL}/admin-create-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            nome,
+            email,
+            perfil,
+            centros_custo: centrosSel,
+            cartoes: cartoesSel,
+          }),
+        });
+
+        let result = {};
+
+        try {
+          result = await res.json();
+        } catch (_err) {
+          result = {};
+        }
+
+        if (!res.ok) {
+          mostrarErroModal(result.error || 'Erro ao enviar convite.');
+          return;
+        }
+
+        Utils.toast('Convite enviado com sucesso!');
+        document.getElementById('modal').classList.add('hidden');
+        resetarModalInvite();
+        await carregarUsuarios();
+
+      } catch (error) {
+        console.error(error);
+        mostrarErroModal(error.message || 'Erro inesperado ao enviar convite.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enviar Convite';
       }
-
-      Utils.toast('Convite enviado com sucesso!');
-      fecharModal();
-      carregarUsuarios();
     });
 
     // Modal editar
     function editarUsuario(u) {
-      document.getElementById('edit-id').value      = u.id;
-      document.getElementById('edit-nome').value    = u.nome;
-      document.getElementById('edit-status').value  = u.status_acesso;
-      document.getElementById('edit-perfil').value  = u.perfil;
+      document.getElementById('edit-id').value = u.id;
+      document.getElementById('edit-nome').value = u.nome || '';
+      document.getElementById('edit-status').value = u.status_acesso;
+      document.getElementById('edit-perfil').value = u.perfil;
       document.getElementById('modal-edit').classList.remove('hidden');
     }
-    function fecharModalEdit() { document.getElementById('modal-edit').classList.add('hidden'); }
+
+    function fecharModalEdit() {
+      document.getElementById('modal-edit').classList.add('hidden');
+    }
 
     async function salvarEdicao() {
-      const id     = document.getElementById('edit-id').value;
-      const nome   = document.getElementById('edit-nome').value.trim();
+      const id = document.getElementById('edit-id').value;
+      const nome = document.getElementById('edit-nome').value.trim();
       const status = document.getElementById('edit-status').value;
       const perfil = document.getElementById('edit-perfil').value;
 
-      const { error } = await supabase.from('usuarios')
-        .update({ nome, status_acesso: status, perfil })
+      const { error } = await supabase
+        .from('usuarios')
+        .update({
+          nome,
+          status_acesso: status,
+          perfil,
+        })
         .eq('id', id);
 
-      if (error) { Utils.toast(error.message, 'error'); return; }
+      if (error) {
+        Utils.toast(error.message, 'error');
+        return;
+      }
+
       Utils.toast('Usuário atualizado!');
       fecharModalEdit();
-      carregarUsuarios();
+      await carregarUsuarios();
     }
 
     // Filtros reativos
@@ -351,7 +508,11 @@
 
     (async () => {
       const user = await Layout.init('usuarios', ['ADMIN']);
-      if (!user) return;
+
+      if (!user) {
+        return;
+      }
+
       await carregarUsuarios();
     })();
   </script>

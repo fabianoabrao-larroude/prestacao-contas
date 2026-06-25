@@ -91,7 +91,7 @@ WHERE email = 'admin@empresa.com';
 ```sql
 -- Inserir usuário no auth (apenas ambiente de desenvolvimento)
 SELECT supabase_admin.create_user(
-  '{"email": "admin@empresa.com", "password": "SenhaSegura123!", "email_confirm": true}'::jsonb
+  '{"email": "admin@empresa.com", "password": "TROQUE_POR_UMA_SENHA_FORTE", "email_confirm": true}'::jsonb
 );
 -- Depois execute o INSERT em usuarios acima
 ```

@@ -379,13 +379,13 @@
       fornecedoresCache = forn || [];
       const optForn = '<option value="">Selecione o fornecedor…</option>'
         + fornecedoresCache.map(f =>
-            `<option value="${f.id}">${f.razao_social}${f.cnpj ? ` · ${f.cnpj}` : ''}</option>`
+            `<option value="${f.id}">${f.razao_social}${f.cnpj ? ` · ${Utils.formatCpfCnpj(f.cnpj)}` : ''}</option>`
           ).join('');
       document.getElementById('fornecedor-compra-id').innerHTML = optForn;
       document.getElementById('fornecedor-fiscal-id').innerHTML =
         '<option value="">Pendente / a definir</option>' +
         fornecedoresCache.map(f =>
-          `<option value="${f.id}">${f.razao_social}${f.cnpj ? ` · ${f.cnpj}` : ''}</option>`
+          `<option value="${f.id}">${f.razao_social}${f.cnpj ? ` · ${Utils.formatCpfCnpj(f.cnpj)}` : ''}</option>`
         ).join('');
     }
 

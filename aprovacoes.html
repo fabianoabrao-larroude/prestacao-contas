@@ -60,9 +60,11 @@
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Usuário</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fornecedor</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">OC/OS</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Centro Custo</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Competência</th>
                   <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fiscal</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Anexos</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
                 </tr>
@@ -85,19 +87,33 @@
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
         <h2 class="text-lg font-semibold text-slate-900">Detalhe da Despesa</h2>
-        <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+        <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
       <div class="px-6 py-5 space-y-4">
         <div id="detalhe-content"></div>
 
         <!-- Seção aprovar/reprovar -->
         <div id="secao-aprovacao" class="border-t border-slate-200 pt-4 space-y-3">
+          <!-- Aviso de alçada -->
+          <div id="aviso-alcada" class="hidden bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p class="text-xs text-amber-700 font-medium">Você não possui alçada para aprovar esta despesa (centro de custo fora da sua gestão).</p>
+          </div>
+
           <div id="motivo-wrap" class="hidden">
             <label class="block text-sm font-medium text-slate-700 mb-1">Motivo da Reprovação *</label>
             <textarea id="motivo-input" rows="3" placeholder="Descreva o motivo…"
               class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
           </div>
-          <div class="flex gap-3">
+
+          <div id="obs-wrap" class="hidden">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Observação da Aprovação</label>
+            <textarea id="obs-input" rows="2" placeholder="Observação opcional para o solicitante…"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"></textarea>
+          </div>
+
+          <div id="btns-aprovacao" class="flex gap-3">
             <button onclick="reprovar()" id="btn-reprovar"
               class="flex-1 px-4 py-2.5 border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors">
               Reprovar
@@ -113,27 +129,39 @@
   </div>
 
   <script>
-    let currentUser = null;
-    let despesaAtual = null;
-    let reprovando = false;
+    let currentUser   = null;
+    let despesaAtual  = null;
+    let reprovando    = false;
+    let aprovando     = false;
+    let centrosGestor = []; // IDs dos centros onde o usuário atual é GESTOR
+
+    const LABEL_SF = {
+      NAO_ANALISADO: 'Não analisado',
+      DOCUMENTO_VALIDO: 'Válido',
+      PENDENTE_NF: 'Pendente NF',
+      RECIBO_SEM_VALOR_FISCAL: 'Recibo s/ valor',
+      REGULARIZADO: 'Regularizado',
+    };
 
     async function carregar() {
-      const comp    = document.getElementById('f-comp').value;
-      const centroId= document.getElementById('f-centro').value;
-      const usrId   = document.getElementById('f-usuario').value;
+      const comp     = document.getElementById('f-comp').value;
+      const centroId = document.getElementById('f-centro').value;
+      const usrId    = document.getElementById('f-usuario').value;
 
       let q = supabase
         .from('despesas')
-        .select(`id, data_despesa, competencia, fornecedor, valor, status,
+        .select(`id, data_despesa, competencia, periodo_contabil, fornecedor,
+                 fornecedor_compra_nome_snapshot, oc_os, valor, status, status_fiscal,
+                 tipo_pagamento,
                  usuarios!despesas_usuario_id_fkey(id, nome),
                  centros_custo(id, nome),
                  despesa_anexos(id)`)
         .eq('status', 'ENVIADA')
         .order('data_despesa', { ascending: false });
 
-      if (comp)    q = q.eq('competencia', comp);
-      if (centroId)q = q.eq('centro_custo_id', centroId);
-      if (usrId)   q = q.eq('usuario_id', usrId);
+      if (comp)     q = q.eq('competencia', comp);
+      if (centroId) q = q.eq('centro_custo_id', centroId);
+      if (usrId)    q = q.eq('usuario_id', usrId);
 
       const { data } = await q;
       const rows = data || [];
@@ -142,31 +170,45 @@
       document.getElementById('total-info').textContent  = `${rows.length} despesa(s) pendente(s)`;
       document.getElementById('total-valor').textContent = `Total: ${Utils.formatCurrency(total)}`;
 
-      Utils.renderTable(document.getElementById('tbody'), rows, d => `
-        <tr class="hover:bg-slate-50 cursor-pointer" onclick="abrirModal('${d.id}')">
-          <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
-          <td class="px-4 py-3 text-slate-800">${d.usuarios?.nome || '–'}</td>
-          <td class="px-4 py-3 font-medium text-slate-800">${d.fornecedor}</td>
-          <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
-          <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(d.competencia)}</td>
-          <td class="px-4 py-3 text-right font-medium text-slate-900">${Utils.formatCurrency(d.valor)}</td>
-          <td class="px-4 py-3 text-slate-600 text-xs">${d.despesa_anexos?.length || 0}</td>
-          <td class="px-4 py-3">
-            <span class="text-blue-600 text-xs font-medium">Analisar →</span>
-          </td>
-        </tr>`);
+      Utils.renderTable(document.getElementById('tbody'), rows, d => {
+        const fornNome = d.fornecedor_compra_nome_snapshot || d.fornecedor || '–';
+        const comp = d.periodo_contabil || d.competencia;
+        const sfLabel = LABEL_SF[d.status_fiscal] || '–';
+        const sfCls = d.status_fiscal === 'PENDENTE_NF' ? 'text-amber-600 font-medium' : 'text-slate-500';
+        return `
+          <tr class="hover:bg-slate-50 cursor-pointer" onclick="abrirModal('${d.id}')">
+            <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
+            <td class="px-4 py-3 text-slate-800">${d.usuarios?.nome || '–'}</td>
+            <td class="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">${fornNome}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">${d.oc_os || '–'}</td>
+            <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
+            <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(comp)}</td>
+            <td class="px-4 py-3 text-right font-medium text-slate-900">${Utils.formatCurrency(d.valor)}</td>
+            <td class="px-4 py-3 text-xs ${sfCls}">${sfLabel}</td>
+            <td class="px-4 py-3 text-slate-600 text-xs">${d.despesa_anexos?.length || 0}</td>
+            <td class="px-4 py-3"><span class="text-blue-600 text-xs font-medium">Analisar →</span></td>
+          </tr>`;
+      });
     }
 
     async function abrirModal(id) {
       reprovando = false;
+      aprovando  = false;
       document.getElementById('motivo-wrap').classList.add('hidden');
+      document.getElementById('obs-wrap').classList.add('hidden');
       document.getElementById('motivo-input').value = '';
+      document.getElementById('obs-input').value    = '';
+      document.getElementById('btn-reprovar').textContent = 'Reprovar';
+      document.getElementById('btn-aprovar').textContent  = 'Aprovar';
+      document.getElementById('aviso-alcada').classList.add('hidden');
 
       const { data } = await supabase
         .from('despesas')
         .select(`*, usuarios!despesas_usuario_id_fkey(nome, email),
-                 centros_custo(nome), contas_despesa(nome),
+                 centros_custo(id, nome), contas_despesa(nome),
                  cartoes_credito(nome, ultimos_4_digitos),
+                 forn_compra:fornecedores!despesas_fornecedor_compra_id_fkey(razao_social, cnpj),
+                 forn_fiscal:fornecedores!despesas_fornecedor_fiscal_id_fkey(razao_social, cnpj),
                  despesa_anexos(id, nome_arquivo, storage_path, tamanho_bytes)`)
         .eq('id', id)
         .single();
@@ -174,18 +216,39 @@
       if (!data) return;
       despesaAtual = data;
 
+      // Verificar alçada para GESTOR
+      const temAlcada = currentUser.perfil === 'ADMIN'
+        || centrosGestor.includes(data.centro_custo_id);
+
+      const tipoPag = {
+        A_VISTA: 'À Vista', PARCELADO: 'Parcelado', ADIANTAMENTO: 'Adiantamento',
+      }[data.tipo_pagamento] || '–';
+
+      const fornCompra = data.forn_compra
+        ? `${data.forn_compra.razao_social}${data.forn_compra.cnpj ? ` · ${Utils.formatCpfCnpj(data.forn_compra.cnpj)}` : ''}`
+        : (data.fornecedor_compra_nome_snapshot || data.fornecedor || '–');
+      const fornFiscal = data.forn_fiscal
+        ? `${data.forn_fiscal.razao_social}${data.forn_fiscal.cnpj ? ` · ${Utils.formatCpfCnpj(data.forn_fiscal.cnpj)}` : ''}`
+        : (data.fornecedor_fiscal_nome_snapshot || (data.is_marketplace ? 'Pendente' : fornCompra));
+
       document.getElementById('detalhe-content').innerHTML = `
         <div class="grid grid-cols-2 gap-3 text-sm">
           <div><p class="text-xs text-slate-500">Usuário</p><p class="font-medium text-slate-800">${data.usuarios?.nome}</p></div>
           <div><p class="text-xs text-slate-500">E-mail</p><p class="text-slate-700">${data.usuarios?.email}</p></div>
           <div><p class="text-xs text-slate-500">Data da Despesa</p><p class="font-medium text-slate-800">${Utils.formatDate(data.data_despesa)}</p></div>
-          <div><p class="text-xs text-slate-500">Competência</p><p class="font-medium text-slate-800">${Utils.formatCompetencia(data.competencia)}</p></div>
-          <div><p class="text-xs text-slate-500">Fornecedor</p><p class="font-medium text-slate-800">${data.fornecedor}</p></div>
+          <div><p class="text-xs text-slate-500">Competência</p><p class="font-medium text-slate-800">${Utils.formatCompetencia(data.periodo_contabil || data.competencia)}</p></div>
+          <div><p class="text-xs text-slate-500">Tipo de Pagamento</p><p class="font-medium text-slate-800">${tipoPag}${data.numero_parcelas > 1 ? ` · ${data.numero_parcelas}x` : ''}</p></div>
+          <div><p class="text-xs text-slate-500">OC / OS</p><p class="font-medium text-slate-800">${data.oc_os || '–'}</p></div>
+          <div class="col-span-2"><p class="text-xs text-slate-500">Fornecedor da Compra</p><p class="font-medium text-slate-800">${fornCompra}</p></div>
+          ${data.is_marketplace ? `<div class="col-span-2"><p class="text-xs text-slate-500">Fornecedor Fiscal <span class="bg-blue-100 text-blue-700 px-1 rounded text-xs">Marketplace</span></p><p class="font-medium text-slate-800">${fornFiscal}</p></div>` : ''}
           <div><p class="text-xs text-slate-500">Valor</p><p class="font-bold text-slate-900 text-base">${Utils.formatCurrency(data.valor)}</p></div>
+          <div><p class="text-xs text-slate-500">Cartão</p><p class="font-medium text-slate-800">${data.cartoes_credito?.nome || '–'} ••••${data.cartoes_credito?.ultimos_4_digitos || ''}</p></div>
+          ${data.nomenclatura_cartao ? `<div class="col-span-2"><p class="text-xs text-slate-500">Nomenclatura no Cartão</p><p class="text-slate-700">${data.nomenclatura_cartao}</p></div>` : ''}
           <div class="col-span-2"><p class="text-xs text-slate-500">Descrição</p><p class="text-slate-700">${data.descricao}</p></div>
           <div><p class="text-xs text-slate-500">Centro de Custo</p><p class="font-medium text-slate-800">${data.centros_custo?.nome || '–'}</p></div>
           <div><p class="text-xs text-slate-500">Conta de Despesa</p><p class="font-medium text-slate-800">${data.contas_despesa?.nome || '–'}</p></div>
-          <div class="col-span-2"><p class="text-xs text-slate-500">Cartão</p><p class="font-medium text-slate-800">${data.cartoes_credito?.nome || '–'} ••••${data.cartoes_credito?.ultimos_4_digitos || ''}</p></div>
+          <div><p class="text-xs text-slate-500">Tipo de Documento</p><p class="text-slate-700">${data.tipo_documento_fiscal || '–'}</p></div>
+          <div><p class="text-xs text-slate-500">Status Fiscal</p><p class="text-slate-700">${LABEL_SF[data.status_fiscal] || '–'}</p></div>
           ${data.observacao ? `<div class="col-span-2"><p class="text-xs text-slate-500">Observação</p><p class="text-slate-600">${data.observacao}</p></div>` : ''}
         </div>
         <div class="mt-4">
@@ -201,6 +264,19 @@
               </div>`).join('') || '<p class="text-xs text-red-500">Sem anexos.</p>'}
           </div>
         </div>`;
+
+      if (!temAlcada) {
+        document.getElementById('aviso-alcada').classList.remove('hidden');
+        document.getElementById('btn-aprovar').disabled = true;
+        document.getElementById('btn-reprovar').disabled = true;
+        document.getElementById('btn-aprovar').classList.add('opacity-50', 'cursor-not-allowed');
+        document.getElementById('btn-reprovar').classList.add('opacity-50', 'cursor-not-allowed');
+      } else {
+        document.getElementById('btn-aprovar').disabled = false;
+        document.getElementById('btn-reprovar').disabled = false;
+        document.getElementById('btn-aprovar').classList.remove('opacity-50', 'cursor-not-allowed');
+        document.getElementById('btn-reprovar').classList.remove('opacity-50', 'cursor-not-allowed');
+      }
 
       document.getElementById('secao-aprovacao').classList.remove('hidden');
       document.getElementById('modal').classList.remove('hidden');
@@ -221,14 +297,27 @@
 
     async function aprovar() {
       if (!despesaAtual) return;
-      if (reprovando) { reprovando = false; document.getElementById('motivo-wrap').classList.add('hidden'); return; }
+
+      // Primeiro clique: mostrar campo de observação
+      if (!aprovando) {
+        aprovando = true;
+        reprovando = false;
+        document.getElementById('obs-wrap').classList.remove('hidden');
+        document.getElementById('motivo-wrap').classList.add('hidden');
+        document.getElementById('btn-aprovar').textContent = 'Confirmar Aprovação';
+        document.getElementById('btn-reprovar').textContent = 'Reprovar';
+        return;
+      }
+
+      const obs = document.getElementById('obs-input').value.trim() || null;
       if (!confirm(`Aprovar despesa de ${Utils.formatCurrency(despesaAtual.valor)} de ${despesaAtual.usuarios?.nome}?`)) return;
 
       const { error } = await supabase.from('despesas').update({
-        status: 'APROVADA',
+        status:                 'APROVADA',
         aprovado_por_usuario_id: currentUser.id,
-        aprovado_em: new Date().toISOString(),
-        motivo_reprovacao: null,
+        aprovado_em:            new Date().toISOString(),
+        motivo_reprovacao:      null,
+        observacao_aprovacao:   obs,
       }).eq('id', despesaAtual.id);
 
       if (error) { Utils.toast(error.message, 'error'); return; }
@@ -239,21 +328,27 @@
 
     async function reprovar() {
       if (!despesaAtual) return;
+
       if (!reprovando) {
         reprovando = true;
+        aprovando  = false;
         document.getElementById('motivo-wrap').classList.remove('hidden');
+        document.getElementById('obs-wrap').classList.add('hidden');
         document.getElementById('btn-reprovar').textContent = 'Confirmar Reprovação';
+        document.getElementById('btn-aprovar').textContent  = 'Aprovar';
         document.getElementById('motivo-input').focus();
         return;
       }
+
       const motivo = document.getElementById('motivo-input').value.trim();
       if (!motivo) { Utils.toast('Informe o motivo da reprovação.', 'error'); return; }
 
       const { error } = await supabase.from('despesas').update({
-        status: 'REPROVADA',
+        status:                 'REPROVADA',
         aprovado_por_usuario_id: currentUser.id,
-        aprovado_em: new Date().toISOString(),
-        motivo_reprovacao: motivo,
+        aprovado_em:            new Date().toISOString(),
+        motivo_reprovacao:      motivo,
+        observacao_aprovacao:   null,
       }).eq('id', despesaAtual.id);
 
       if (error) { Utils.toast(error.message, 'error'); return; }
@@ -278,10 +373,21 @@
       Utils.populateSelect(document.getElementById('f-usuario'), usr || [], 'id', 'nome');
     }
 
+    async function carregarCentrosGestor() {
+      if (currentUser.perfil === 'ADMIN') return; // ADMIN tem alçada total
+      const { data } = await supabase
+        .from('usuario_centros_custo')
+        .select('centro_custo_id')
+        .eq('usuario_id', currentUser.id)
+        .eq('papel_no_centro', 'GESTOR')
+        .eq('ativo', true);
+      centrosGestor = (data || []).map(r => r.centro_custo_id);
+    }
+
     (async () => {
       currentUser = await Layout.init('aprovacoes', ['ADMIN','GESTOR']);
       if (!currentUser) return;
-      await popularFiltros();
+      await Promise.all([popularFiltros(), carregarCentrosGestor()]);
       await carregar();
     })();
   </script>

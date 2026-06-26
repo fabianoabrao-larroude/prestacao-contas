@@ -85,6 +85,48 @@ const Utils = {
     });
   },
 
+  // ── CPF / CNPJ ───────────────────────────────────────────
+  // A coluna de banco chama-se `cnpj`, mas armazena CPF (11 dígitos)
+  // ou CNPJ (14 dígitos), sempre sem pontuação.
+
+  // Formata dígitos brutos para exibição.
+  // 11 dígitos → 000.000.000-00   |   14 dígitos → 00.000.000/0000-00
+  // Retorna string vazia se vazio; retorna o valor original se não reconhecido.
+  formatCpfCnpj(doc) {
+    if (!doc) return '';
+    const d = String(doc).replace(/\D/g, '');
+    if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    return d || String(doc);
+  },
+
+  // Remove toda pontuação; retorna só os dígitos.
+  limparCpfCnpj(str) {
+    return str ? String(str).replace(/\D/g, '') : '';
+  },
+
+  // Aplica máscara progressiva em um <input> enquanto o usuário digita.
+  // Chamar no evento oninput: oninput="Utils.mascaraCpfCnpj(this)"
+  mascaraCpfCnpj(el) {
+    const digits = el.value.replace(/\D/g, '').substring(0, 14);
+    let v = digits;
+    if (digits.length <= 11) {
+      // CPF: 000.000.000-00
+      v = digits
+        .replace(/^(\d{3})(\d)/, '$1.$2')
+        .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+    } else {
+      // CNPJ: 00.000.000/0000-00
+      v = digits
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3/$4')
+        .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, '$1.$2.$3/$4-$5');
+    }
+    el.value = v;
+  },
+
   // Render de tabela simples
   renderTable(tbodyEl, rows, renderRow) {
     if (!rows?.length) {

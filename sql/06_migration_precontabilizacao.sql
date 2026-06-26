@@ -8,6 +8,10 @@
 CREATE TABLE IF NOT EXISTS fornecedores (
   id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
   codigo_senda  VARCHAR(30)  UNIQUE,
+  -- Coluna mantida como `cnpj` por compatibilidade com o MVP.
+  -- Armazena CPF (11 dígitos) ou CNPJ (14 dígitos), sempre sem pontuação.
+  -- VARCHAR(18) preserva espaço para eventuais valores legados com máscara.
+  -- O frontend salva apenas dígitos a partir desta versão.
   cnpj          VARCHAR(18)  UNIQUE,
   razao_social  VARCHAR(200) NOT NULL,
   nome_fantasia VARCHAR(200),

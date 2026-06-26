@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fornecedores – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div><p class="text-sm text-slate-500">Carregando…</p></div>
+  </div>
+  <div id="app" class="hidden flex h-screen overflow-hidden">
+    <div id="sidebar-container" class="flex-shrink-0"></div>
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-6xl mx-auto">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">Fornecedores</h1>
+            <p class="text-sm text-slate-500 mt-1">Cadastro de fornecedores da empresa</p>
+          </div>
+          <button onclick="abrirModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Novo Fornecedor
+          </button>
+        </div>
+
+        <div class="flex gap-3 mb-4">
+          <input id="busca" type="text" placeholder="Buscar por razão social, nome fantasia ou CNPJ…"
+            class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <select id="filtro-ativo" class="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="true">Ativos</option>
+            <option value="">Todos</option>
+            <option value="false">Inativos</option>
+          </select>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cód. Senda</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">CNPJ</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Razão Social</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome Fantasia</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbody" class="divide-y divide-slate-100"></tbody>
+            </table>
+          </div>
+          <div class="px-5 py-3 border-t border-slate-100">
+            <p class="text-xs text-slate-500" id="total-info">–</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal cadastro/edição -->
+  <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 id="modal-title" class="text-lg font-semibold text-slate-900">Novo Fornecedor</h2>
+        <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <input id="edit-id" type="hidden">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Código Senda</label>
+            <input id="edit-codigo-senda" type="text" maxlength="30"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Ex: 001234">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">CNPJ</label>
+            <input id="edit-cnpj" type="text" maxlength="18"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="00.000.000/0001-00">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Razão Social *</label>
+          <input id="edit-razao-social" type="text" required maxlength="200"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Nome completo da empresa">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Nome Fantasia</label>
+          <input id="edit-nome-fantasia" type="text" maxlength="200"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Apelido comercial (opcional)">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Observação</label>
+          <textarea id="edit-observacao" rows="2"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            placeholder="Informações adicionais (opcional)"></textarea>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="edit-ativo" type="checkbox" checked class="rounded text-blue-600">
+          <label class="text-sm text-slate-700">Ativo</label>
+        </div>
+        <div id="msg-modal" class="hidden text-sm px-3 py-2 rounded-lg border"></div>
+        <div class="flex gap-3 pt-2">
+          <button onclick="fecharModal()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">Cancelar</button>
+          <button onclick="salvar()" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let todos = [];
+
+    async function carregar() {
+      const { data } = await supabase.from('fornecedores').select('*').order('razao_social');
+      todos = data || [];
+      renderizar();
+    }
+
+    function renderizar() {
+      const busca = document.getElementById('busca').value.toLowerCase();
+      const ativo  = document.getElementById('filtro-ativo').value;
+      const filtrados = todos.filter(r => {
+        const ok1 = !busca
+          || r.razao_social.toLowerCase().includes(busca)
+          || (r.nome_fantasia || '').toLowerCase().includes(busca)
+          || (r.cnpj || '').includes(busca)
+          || (r.codigo_senda || '').toLowerCase().includes(busca);
+        const ok2 = ativo === '' || String(r.ativo) === ativo;
+        return ok1 && ok2;
+      });
+
+      document.getElementById('total-info').textContent = `${filtrados.length} registro(s)`;
+
+      Utils.renderTable(document.getElementById('tbody'), filtrados, r => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.codigo_senda || '–'}</td>
+          <td class="px-5 py-3 font-mono text-xs text-slate-600">${r.cnpj || '–'}</td>
+          <td class="px-5 py-3 font-medium text-slate-800">${r.razao_social}</td>
+          <td class="px-5 py-3 text-slate-600 text-xs">${r.nome_fantasia || '–'}</td>
+          <td class="px-5 py-3">${Utils.ativoBadge(r.ativo)}</td>
+          <td class="px-5 py-3 whitespace-nowrap">
+            <button onclick='editar(${JSON.stringify(r)})' class="text-blue-600 hover:text-blue-800 text-xs font-medium mr-3">Editar</button>
+            <button onclick='toggleAtivo("${r.id}", ${r.ativo})' class="text-xs font-medium ${r.ativo ? 'text-red-500 hover:text-red-700' : 'text-green-600 hover:text-green-800'}">
+              ${r.ativo ? 'Inativar' : 'Ativar'}
+            </button>
+          </td>
+        </tr>`);
+    }
+
+    function abrirModal(item = null) {
+      document.getElementById('modal-title').textContent = item ? 'Editar Fornecedor' : 'Novo Fornecedor';
+      document.getElementById('edit-id').value              = item?.id || '';
+      document.getElementById('edit-codigo-senda').value    = item?.codigo_senda || '';
+      document.getElementById('edit-cnpj').value            = item?.cnpj || '';
+      document.getElementById('edit-razao-social').value    = item?.razao_social || '';
+      document.getElementById('edit-nome-fantasia').value   = item?.nome_fantasia || '';
+      document.getElementById('edit-observacao').value      = item?.observacao || '';
+      document.getElementById('edit-ativo').checked         = item ? item.ativo : true;
+      document.getElementById('msg-modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    function editar(item) { abrirModal(item); }
+    function fecharModal() { document.getElementById('modal').classList.add('hidden'); }
+
+    async function salvar() {
+      const id          = document.getElementById('edit-id').value;
+      const razaoSocial = document.getElementById('edit-razao-social').value.trim();
+      const cnpj        = document.getElementById('edit-cnpj').value.trim() || null;
+      const codigoSenda = document.getElementById('edit-codigo-senda').value.trim() || null;
+      const nomeFant    = document.getElementById('edit-nome-fantasia').value.trim() || null;
+      const obs         = document.getElementById('edit-observacao').value.trim() || null;
+      const ativo       = document.getElementById('edit-ativo').checked;
+      const msg         = document.getElementById('msg-modal');
+
+      if (!razaoSocial) {
+        msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
+        msg.textContent = 'Razão Social é obrigatória.';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      const payload = {
+        razao_social:  razaoSocial,
+        nome_fantasia: nomeFant,
+        cnpj,
+        codigo_senda:  codigoSenda,
+        observacao:    obs,
+        ativo,
+      };
+
+      let error;
+      if (id) {
+        ({ error } = await supabase.from('fornecedores').update(payload).eq('id', id));
+      } else {
+        ({ error } = await supabase.from('fornecedores').insert(payload));
+      }
+
+      if (error) {
+        msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
+        msg.textContent = error.message.includes('unique')
+          ? 'CNPJ ou Código Senda já cadastrado.'
+          : error.message;
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      Utils.toast(id ? 'Fornecedor atualizado!' : 'Fornecedor criado!');
+      fecharModal();
+      carregar();
+    }
+
+    async function toggleAtivo(id, atualAtivo) {
+      const acao = atualAtivo ? 'inativar' : 'ativar';
+      if (!confirm(`Deseja ${acao} este fornecedor?`)) return;
+      const { error } = await supabase.from('fornecedores').update({ ativo: !atualAtivo }).eq('id', id);
+      if (error) { Utils.toast(error.message, 'error'); return; }
+      Utils.toast(`Fornecedor ${atualAtivo ? 'inativado' : 'ativado'}.`);
+      carregar();
+    }
+
+    document.getElementById('busca').addEventListener('input', Utils.debounce(renderizar));
+    document.getElementById('filtro-ativo').addEventListener('change', renderizar);
+
+    (async () => {
+      const user = await Layout.init('fornecedores', ['ADMIN']);
+      if (!user) return;
+      await carregar();
+    })();
+  </script>
+</body>
+</html>

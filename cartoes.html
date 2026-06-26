@@ -43,8 +43,10 @@
               <tr>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Código</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Banco</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bandeira</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Final</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fechamento</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
               </tr>
@@ -57,11 +59,13 @@
   </div>
 
   <!-- Modal -->
-  <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+  <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
       <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
         <h2 id="modal-title" class="text-lg font-semibold text-slate-900">Novo Cartão</h2>
-        <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>
+        <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
       <div class="px-6 py-5 space-y-4">
         <input id="edit-id" type="hidden">
@@ -79,12 +83,35 @@
           <label class="block text-sm font-medium text-slate-700 mb-1">Nome do Cartão *</label>
           <input id="edit-nome" type="text" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Mastercard Comercial">
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Bandeira</label>
-          <select id="edit-bandeira" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="">Selecione…</option>
-            <option>Visa</option><option>Mastercard</option><option>American Express</option><option>Elo</option><option>Hipercard</option>
-          </select>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Banco Emissor</label>
+            <input id="edit-banco" type="text" maxlength="100" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: Itaú, Bradesco">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Bandeira</label>
+            <select id="edit-bandeira" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Selecione…</option>
+              <option>Visa</option><option>Mastercard</option><option>American Express</option><option>Elo</option><option>Hipercard</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Dia Fechamento</label>
+            <input id="edit-fechamento" type="number" min="1" max="31"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: 20">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Dia Vencimento</label>
+            <input id="edit-vencimento" type="number" min="1" max="31"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ex: 10">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Cta. Transitória</label>
+            <input id="edit-conta-trans" type="text" maxlength="30"
+              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Cód.">
+          </div>
         </div>
         <div class="flex items-center gap-2">
           <input id="edit-ativo" type="checkbox" checked class="rounded text-blue-600">
@@ -112,7 +139,10 @@
       const busca = document.getElementById('busca').value.toLowerCase();
       const ativo = document.getElementById('filtro-ativo').value;
       const filtrados = todos.filter(r => {
-        const ok1 = !busca || r.nome.toLowerCase().includes(busca) || (r.bandeira || '').toLowerCase().includes(busca) || r.codigo.toLowerCase().includes(busca);
+        const ok1 = !busca || r.nome.toLowerCase().includes(busca)
+          || (r.bandeira || '').toLowerCase().includes(busca)
+          || r.codigo.toLowerCase().includes(busca)
+          || (r.banco_emissor || '').toLowerCase().includes(busca);
         const ok2 = ativo === '' || String(r.ativo) === ativo;
         return ok1 && ok2;
       });
@@ -120,8 +150,12 @@
         <tr class="hover:bg-slate-50">
           <td class="px-5 py-3 font-mono text-xs text-slate-500">${r.codigo}</td>
           <td class="px-5 py-3 font-medium text-slate-800">${r.nome}</td>
+          <td class="px-5 py-3 text-slate-600 text-xs">${r.banco_emissor || '–'}</td>
           <td class="px-5 py-3 text-slate-600">${r.bandeira || '–'}</td>
           <td class="px-5 py-3 font-mono text-slate-600">••••&nbsp;${r.ultimos_4_digitos}</td>
+          <td class="px-5 py-3 text-slate-500 text-xs">
+            ${r.dia_fechamento_fatura ? `Fech. dia ${r.dia_fechamento_fatura} / Venc. dia ${r.dia_vencimento_fatura || '–'}` : '–'}
+          </td>
           <td class="px-5 py-3">${Utils.ativoBadge(r.ativo)}</td>
           <td class="px-5 py-3">
             <button onclick='editar(${JSON.stringify(r)})' class="text-blue-600 hover:text-blue-800 text-xs font-medium">Editar</button>
@@ -130,15 +164,19 @@
     }
 
     function abrirModal(item = null) {
-      document.getElementById('modal-title').textContent = item ? 'Editar Cartão' : 'Novo Cartão';
-      document.getElementById('edit-id').value       = item?.id || '';
-      document.getElementById('edit-codigo').value   = item?.codigo || '';
-      document.getElementById('edit-nome').value     = item?.nome || '';
-      document.getElementById('edit-digitos').value  = item?.ultimos_4_digitos || '';
-      document.getElementById('edit-bandeira').value = item?.bandeira || '';
-      document.getElementById('edit-ativo').checked  = item ? item.ativo : true;
-      document.getElementById('edit-codigo').disabled  = !!item;
-      document.getElementById('edit-digitos').disabled = !!item;
+      document.getElementById('modal-title').textContent   = item ? 'Editar Cartão' : 'Novo Cartão';
+      document.getElementById('edit-id').value            = item?.id || '';
+      document.getElementById('edit-codigo').value        = item?.codigo || '';
+      document.getElementById('edit-nome').value          = item?.nome || '';
+      document.getElementById('edit-digitos').value       = item?.ultimos_4_digitos || '';
+      document.getElementById('edit-banco').value         = item?.banco_emissor || '';
+      document.getElementById('edit-bandeira').value      = item?.bandeira || '';
+      document.getElementById('edit-fechamento').value    = item?.dia_fechamento_fatura || '';
+      document.getElementById('edit-vencimento').value    = item?.dia_vencimento_fatura || '';
+      document.getElementById('edit-conta-trans').value   = item?.conta_transitoria_codigo || '';
+      document.getElementById('edit-ativo').checked       = item ? item.ativo : true;
+      document.getElementById('edit-codigo').disabled     = !!item;
+      document.getElementById('edit-digitos').disabled    = !!item;
       document.getElementById('msg-modal').classList.add('hidden');
       document.getElementById('modal').classList.remove('hidden');
     }
@@ -146,13 +184,17 @@
     function fecharModal() { document.getElementById('modal').classList.add('hidden'); }
 
     async function salvar() {
-      const id      = document.getElementById('edit-id').value;
-      const codigo  = document.getElementById('edit-codigo').value.trim();
-      const nome    = document.getElementById('edit-nome').value.trim();
-      const digitos = document.getElementById('edit-digitos').value.trim();
-      const bandeira= document.getElementById('edit-bandeira').value;
-      const ativo   = document.getElementById('edit-ativo').checked;
-      const msg     = document.getElementById('msg-modal');
+      const id          = document.getElementById('edit-id').value;
+      const codigo      = document.getElementById('edit-codigo').value.trim();
+      const nome        = document.getElementById('edit-nome').value.trim();
+      const digitos     = document.getElementById('edit-digitos').value.trim();
+      const banco       = document.getElementById('edit-banco').value.trim() || null;
+      const bandeira    = document.getElementById('edit-bandeira').value || null;
+      const fechamento  = parseInt(document.getElementById('edit-fechamento').value) || null;
+      const vencimento  = parseInt(document.getElementById('edit-vencimento').value) || null;
+      const contaTrans  = document.getElementById('edit-conta-trans').value.trim() || null;
+      const ativo       = document.getElementById('edit-ativo').checked;
+      const msg         = document.getElementById('msg-modal');
 
       if (!nome || (!id && (!codigo || !/^\d{4}$/.test(digitos)))) {
         msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
@@ -160,13 +202,23 @@
         msg.classList.remove('hidden'); return;
       }
 
-      const payload = { nome, bandeira: bandeira || null, ativo };
+      const payload = {
+        nome, bandeira, ativo,
+        banco_emissor:            banco,
+        dia_fechamento_fatura:    fechamento,
+        dia_vencimento_fatura:    vencimento,
+        conta_transitoria_codigo: contaTrans,
+      };
+
       let error;
       if (id) {
         ({ error } = await supabase.from('cartoes_credito').update(payload).eq('id', id));
       } else {
-        ({ error } = await supabase.from('cartoes_credito').insert({ ...payload, codigo, ultimos_4_digitos: digitos }));
+        ({ error } = await supabase.from('cartoes_credito').insert({
+          ...payload, codigo, ultimos_4_digitos: digitos,
+        }));
       }
+
       if (error) {
         msg.className = 'text-sm px-3 py-2 rounded-lg border bg-red-50 border-red-200 text-red-700';
         msg.textContent = error.message.includes('unique') ? 'Código já cadastrado.' : error.message;

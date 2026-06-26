@@ -40,35 +40,122 @@
           <p class="text-sm text-red-600 mt-1" id="motivo-reprovacao-texto"></p>
         </div>
 
-        <!-- Formulário -->
+        <!-- Alerta de cancelamento -->
+        <div id="alerta-cancelamento" class="hidden bg-slate-100 border border-slate-300 rounded-xl p-4 mb-5">
+          <p class="text-sm font-medium text-slate-700">Despesa cancelada</p>
+          <p class="text-sm text-slate-500 mt-1" id="motivo-cancelamento-texto"></p>
+        </div>
+
+        <!-- Formulário principal -->
         <div class="bg-white rounded-xl border border-slate-200 p-6 mb-5">
           <h2 class="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider">Dados da Despesa</h2>
           <div class="grid grid-cols-2 gap-4">
+
+            <!-- 1. Tipo de pagamento -->
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de Pagamento *</label>
+              <select id="tipo-pagamento" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecione…</option>
+                <option value="A_VISTA">À Vista</option>
+                <option value="PARCELADO">Parcelado</option>
+                <option value="ADIANTAMENTO">Adiantamento</option>
+              </select>
+            </div>
+
+            <!-- 2. Número de parcelas (condicional) -->
+            <div id="wrap-parcelas" class="hidden">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Nº de Parcelas *</label>
+              <input id="numero-parcelas" type="number" min="2" max="60" placeholder="Ex: 12"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <!-- Placeholder para manter grid quando parcelas está oculto -->
+            <div id="wrap-parcelas-placeholder"></div>
+
+            <!-- 3. Data da despesa -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Data da Despesa *</label>
               <input id="data-despesa" type="date" required
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+
+            <!-- 4. Período contábil -->
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1">Competência (mês/fatura) *</label>
-              <input id="competencia" type="month" required
+              <label class="block text-sm font-medium text-slate-700 mb-1">Período Contábil *</label>
+              <input id="periodo-contabil" type="month" required
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+
+            <!-- 5. Período financeiro -->
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Período Financeiro / Fatura</label>
+              <input id="periodo-financeiro" type="month"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- 6. Vencimento financeiro -->
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1">Vencimento Financeiro / Fatura</label>
+              <input id="data-vencimento-financeiro" type="date"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- 7. Fornecedor da compra -->
             <div class="col-span-2">
-              <label class="block text-sm font-medium text-slate-700 mb-1">Fornecedor *</label>
-              <input id="fornecedor" type="text" required placeholder="Nome do fornecedor"
+              <label class="block text-sm font-medium text-slate-700 mb-1">Fornecedor da Compra *</label>
+              <select id="fornecedor-compra-id" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecione o fornecedor…</option>
+              </select>
+            </div>
+
+            <!-- 8. Checkbox marketplace -->
+            <div class="col-span-2">
+              <label class="flex items-center gap-3 cursor-pointer group">
+                <input id="is-marketplace" type="checkbox"
+                  class="rounded text-blue-600 w-4 h-4 cursor-pointer">
+                <span class="text-sm text-slate-700 group-hover:text-slate-900">
+                  Compra via marketplace / intermediador
+                  <span class="text-slate-400 font-normal">(Mercado Livre, Amazon, Shopee etc.)</span>
+                </span>
+              </label>
+              <p id="marketplace-hint" class="hidden text-xs text-blue-600 mt-1 ml-7">
+                Fornecedor fiscal pode ser diferente da plataforma de compra.
+              </p>
+            </div>
+
+            <!-- 9. Fornecedor fiscal (condicional) -->
+            <div id="wrap-fornecedor-fiscal" class="col-span-2 hidden">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Fornecedor Fiscal</label>
+              <select id="fornecedor-fiscal-id"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Pendente / a definir</option>
+              </select>
+              <p class="text-xs text-slate-400 mt-1">Emissor real da nota fiscal. Pode ficar vazio em adiantamentos pendentes de NF.</p>
+            </div>
+
+            <!-- 10. OC/OS -->
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">OC / OS *</label>
+              <input id="oc-os" type="text" required maxlength="100" placeholder="Número da OC ou OS"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+
+            <!-- 11. Descrição -->
             <div class="col-span-2">
               <label class="block text-sm font-medium text-slate-700 mb-1">Descrição *</label>
               <textarea id="descricao" rows="2" required placeholder="Descreva a despesa"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
             </div>
+
+            <!-- 12. Valor -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Valor (R$) *</label>
               <input id="valor" type="number" min="0.01" step="0.01" required placeholder="0,00"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
+
+            <!-- 13. Cartão -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Cartão *</label>
               <select id="cartao" required
@@ -76,6 +163,16 @@
                 <option value="">Selecione…</option>
               </select>
             </div>
+
+            <!-- 14. Nomenclatura no cartão -->
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Nomenclatura no Cartão *</label>
+              <input id="nomenclatura-cartao" type="text" required maxlength="200"
+                placeholder="Como aparece na fatura do cartão"
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <!-- 15. Centro de custo -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Centro de Custo *</label>
               <select id="centro-custo" required
@@ -83,6 +180,8 @@
                 <option value="">Selecione…</option>
               </select>
             </div>
+
+            <!-- 16. Conta de despesa -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-1">Conta de Despesa *</label>
               <select id="conta-despesa" required
@@ -90,15 +189,33 @@
                 <option value="">Selecione…</option>
               </select>
             </div>
+
+            <!-- 17. Tipo de documento fiscal -->
+            <div class="col-span-2">
+              <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de Documento Fiscal *</label>
+              <select id="tipo-documento-fiscal" required
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecione…</option>
+                <option value="NOTA_FISCAL">Nota Fiscal</option>
+                <option value="CUPOM_FISCAL">Cupom Fiscal</option>
+                <option value="RECIBO_SEM_VALOR_FISCAL">Recibo Sem Valor Fiscal</option>
+                <option value="COMPROVANTE_PAGAMENTO">Comprovante de Pagamento</option>
+                <option value="PENDENTE_NF">Pendente de NF</option>
+                <option value="OUTRO">Outro</option>
+              </select>
+            </div>
+
+            <!-- 18. Observação -->
             <div class="col-span-2">
               <label class="block text-sm font-medium text-slate-700 mb-1">Observação</label>
               <textarea id="observacao" rows="2" placeholder="Observações adicionais (opcional)"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
             </div>
+
           </div>
         </div>
 
-        <!-- Anexos -->
+        <!-- 19. Anexos -->
         <div class="bg-white rounded-xl border border-slate-200 p-6 mb-5">
           <div class="flex items-center justify-between mb-4">
             <div>
@@ -108,7 +225,6 @@
             <span id="qtd-anexos-badge" class="text-xs text-slate-500">0 / 5</span>
           </div>
 
-          <!-- Área de upload (só aparece quando editável) -->
           <div id="upload-area" class="hidden">
             <label for="file-input" class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
               <svg class="w-8 h-8 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
@@ -118,13 +234,11 @@
             <input id="file-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" class="hidden">
           </div>
 
-          <!-- Lista de arquivos pendentes (antes de salvar) -->
           <div id="files-pendentes" class="hidden mt-3">
             <p class="text-xs font-medium text-slate-500 mb-2">Aguardando upload:</p>
             <div id="list-pendentes" class="space-y-2"></div>
           </div>
 
-          <!-- Anexos salvos -->
           <div id="anexos-salvos" class="mt-3 space-y-2"></div>
         </div>
 
@@ -141,47 +255,75 @@
   </div>
 
   <script>
-    const params = new URLSearchParams(location.search);
-    const despesaId = params.get('id');
-    let currentUser = null;
-    let despesa = null;
-    let anexos = [];
+    const params     = new URLSearchParams(location.search);
+    const despesaId  = params.get('id');
+    let currentUser  = null;
+    let despesa      = null;
+    let anexos       = [];
     let filesPendentes = [];
-    let editavel = false;
-    let uploadInitialized = false; // guard: evita registrar listener duplo
+    let editavel     = false;
+    let uploadInitialized = false;
+    let fornecedoresCache = [];
 
-    // ── Inicialização ──────────────────────────────────────────
+    // ── Inicialização ──────────────────────────────────────
     async function init() {
       currentUser = await Layout.init('despesas');
       if (!currentUser) return;
 
       await carregarSelects();
+      registrarEventosForm();
 
       if (despesaId) {
         await carregarDespesa();
       } else {
-        // Nova despesa: pré-preencher data e competência
         const hoje = new Date();
         document.getElementById('data-despesa').value =
           hoje.toISOString().split('T')[0];
-        document.getElementById('competencia').value =
-          `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+        const mes = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+        document.getElementById('periodo-contabil').value  = mes;
+        document.getElementById('periodo-financeiro').value = mes;
         editavel = true;
         renderAcoes();
-        // Mostrar upload imediatamente: arquivos em filesPendentes contam
-        // como comprovante válido para o fluxo de envio em nova despesa.
         document.getElementById('upload-area').classList.remove('hidden');
         inicializarUpload();
       }
     }
 
+    function registrarEventosForm() {
+      document.getElementById('tipo-pagamento').addEventListener('change', onTipoPagamentoChange);
+      document.getElementById('is-marketplace').addEventListener('change', onMarketplaceChange);
+    }
+
+    function onTipoPagamentoChange() {
+      const tipo = document.getElementById('tipo-pagamento').value;
+      const wrapP = document.getElementById('wrap-parcelas');
+      const wrapPH = document.getElementById('wrap-parcelas-placeholder');
+      if (tipo === 'PARCELADO') {
+        wrapP.classList.remove('hidden');
+        wrapPH.classList.add('hidden');
+      } else {
+        wrapP.classList.add('hidden');
+        wrapPH.classList.remove('hidden');
+        document.getElementById('numero-parcelas').value = '';
+      }
+    }
+
+    function onMarketplaceChange() {
+      const checked = document.getElementById('is-marketplace').checked;
+      const wrapFiscal = document.getElementById('wrap-fornecedor-fiscal');
+      const hint = document.getElementById('marketplace-hint');
+      if (checked) {
+        wrapFiscal.classList.remove('hidden');
+        hint.classList.remove('hidden');
+      } else {
+        wrapFiscal.classList.add('hidden');
+        hint.classList.add('hidden');
+        document.getElementById('fornecedor-fiscal-id').value = '';
+      }
+    }
+
     async function carregarSelects() {
-      // Centros e cartões: sempre filtrados pelos vínculos do usuário logado,
-      // independente do perfil. ADMIN/GESTOR/USUARIO só veem o que está em
-      // usuario_centros_custo e usuario_cartoes com ativo = true.
-      // A RLS de INSERT em despesas exige esses vínculos para qualquer perfil.
-      // Conta de Despesa não tem vínculo por usuário — lista todas as ativas.
-      const [{ data: ucc }, { data: uc }, { data: cd }] = await Promise.all([
+      const [{ data: ucc }, { data: uc }, { data: cd }, { data: forn }] = await Promise.all([
         supabase.from('usuario_centros_custo')
           .select('centro_custo_id, centros_custo(id, codigo, nome)')
           .eq('usuario_id', currentUser.id)
@@ -194,29 +336,27 @@
           .select('id, nome')
           .eq('ativo', true)
           .order('nome'),
+        supabase.from('fornecedores')
+          .select('id, razao_social, nome_fantasia, cnpj, codigo_senda')
+          .eq('ativo', true)
+          .order('razao_social'),
       ]);
 
-      // Centros de custo vinculados
-      const centros = (ucc || [])
-        .map(r => r.centros_custo)
-        .filter(Boolean)
+      // Centros de custo
+      const centros = (ucc || []).map(r => r.centros_custo).filter(Boolean)
         .sort((a, b) => a.nome.localeCompare(b.nome));
-
       const selCC = document.getElementById('centro-custo');
       if (centros.length) {
         Utils.populateSelect(selCC, centros, 'id', 'nome');
       } else {
         selCC.innerHTML = '<option value="">Sem centros vinculados</option>';
         selCC.disabled = true;
-        Utils.toast('Você não possui centro de custo vinculado. Solicite acesso ao administrador.', 'warning');
+        Utils.toast('Você não possui centro de custo vinculado.', 'warning');
       }
 
-      // Cartões vinculados
-      const cartoes = (uc || [])
-        .map(r => r.cartoes_credito)
-        .filter(Boolean)
+      // Cartões
+      const cartoes = (uc || []).map(r => r.cartoes_credito).filter(Boolean)
         .sort((a, b) => a.nome.localeCompare(b.nome));
-
       const selCart = document.getElementById('cartao');
       if (cartoes.length) {
         selCart.innerHTML = '<option value="">Selecione…</option>';
@@ -229,11 +369,24 @@
       } else {
         selCart.innerHTML = '<option value="">Sem cartões vinculados</option>';
         selCart.disabled = true;
-        Utils.toast('Você não possui cartão vinculado. Solicite acesso ao administrador.', 'warning');
+        Utils.toast('Você não possui cartão vinculado.', 'warning');
       }
 
-      // Contas de despesa — sem filtro por usuário
+      // Contas de despesa
       Utils.populateSelect(document.getElementById('conta-despesa'), cd || [], 'id', 'nome');
+
+      // Fornecedores
+      fornecedoresCache = forn || [];
+      const optForn = '<option value="">Selecione o fornecedor…</option>'
+        + fornecedoresCache.map(f =>
+            `<option value="${f.id}">${f.razao_social}${f.cnpj ? ` · ${f.cnpj}` : ''}</option>`
+          ).join('');
+      document.getElementById('fornecedor-compra-id').innerHTML = optForn;
+      document.getElementById('fornecedor-fiscal-id').innerHTML =
+        '<option value="">Pendente / a definir</option>' +
+        fornecedoresCache.map(f =>
+          `<option value="${f.id}">${f.razao_social}${f.cnpj ? ` · ${f.cnpj}` : ''}</option>`
+        ).join('');
     }
 
     async function carregarDespesa() {
@@ -248,31 +401,75 @@
       if (error || !data) { Utils.toast('Despesa não encontrada.', 'error'); return; }
       despesa = data;
 
+      const statusCancelada = despesa.status === 'CANCELADA';
       editavel = ['RASCUNHO', 'REPROVADA'].includes(despesa.status)
         && (currentUser.perfil === 'ADMIN' || despesa.usuario_id === currentUser.id);
 
       // Preencher campos
-      document.getElementById('page-title').textContent = `Despesa – ${despesa.fornecedor}`;
+      document.getElementById('page-title').textContent = `Despesa`;
       document.getElementById('status-badge').innerHTML = Utils.statusBadge(despesa.status);
-      document.getElementById('data-despesa').value  = despesa.data_despesa;
-      document.getElementById('competencia').value   = despesa.competencia;
-      document.getElementById('fornecedor').value    = despesa.fornecedor;
-      document.getElementById('descricao').value     = despesa.descricao;
-      document.getElementById('valor').value         = despesa.valor;
-      document.getElementById('observacao').value    = despesa.observacao || '';
-      document.getElementById('cartao').value        = despesa.cartao_id;
-      document.getElementById('centro-custo').value  = despesa.centro_custo_id;
-      document.getElementById('conta-despesa').value = despesa.conta_despesa_id;
 
+      // Tipo de pagamento
+      if (despesa.tipo_pagamento) {
+        document.getElementById('tipo-pagamento').value = despesa.tipo_pagamento;
+        onTipoPagamentoChange();
+      }
+      if (despesa.numero_parcelas) {
+        document.getElementById('numero-parcelas').value = despesa.numero_parcelas;
+      }
+
+      document.getElementById('data-despesa').value = despesa.data_despesa;
+      // periodo_contabil pode ser novo campo ou fallback para competencia
+      document.getElementById('periodo-contabil').value = despesa.periodo_contabil || despesa.competencia || '';
+      document.getElementById('periodo-financeiro').value = despesa.periodo_financeiro || '';
+      document.getElementById('data-vencimento-financeiro').value = despesa.data_vencimento_financeiro || '';
+
+      // Fornecedores
+      if (despesa.fornecedor_compra_id) {
+        document.getElementById('fornecedor-compra-id').value = despesa.fornecedor_compra_id;
+      }
+      if (despesa.is_marketplace) {
+        document.getElementById('is-marketplace').checked = true;
+        onMarketplaceChange();
+        if (despesa.fornecedor_fiscal_id) {
+          document.getElementById('fornecedor-fiscal-id').value = despesa.fornecedor_fiscal_id;
+        }
+      }
+
+      document.getElementById('oc-os').value             = despesa.oc_os || '';
+      document.getElementById('descricao').value         = despesa.descricao;
+      document.getElementById('valor').value             = despesa.valor;
+      document.getElementById('cartao').value            = despesa.cartao_id;
+      document.getElementById('nomenclatura-cartao').value = despesa.nomenclatura_cartao || '';
+      document.getElementById('centro-custo').value      = despesa.centro_custo_id;
+      document.getElementById('conta-despesa').value     = despesa.conta_despesa_id;
+      document.getElementById('tipo-documento-fiscal').value = despesa.tipo_documento_fiscal || '';
+      document.getElementById('observacao').value        = despesa.observacao || '';
+
+      // Alertas
       if (despesa.status === 'REPROVADA' && despesa.motivo_reprovacao) {
         document.getElementById('alerta-reprovacao').classList.remove('hidden');
         document.getElementById('motivo-reprovacao-texto').textContent = despesa.motivo_reprovacao;
       }
+      if (statusCancelada && despesa.motivo_cancelamento) {
+        document.getElementById('alerta-cancelamento').classList.remove('hidden');
+        document.getElementById('motivo-cancelamento-texto').textContent =
+          `Motivo: ${despesa.motivo_cancelamento}`;
+      }
 
-      // Campos readonly se não editável
+      // Desabilitar campos se não editável
       if (!editavel) {
-        ['data-despesa','competencia','fornecedor','descricao','valor','observacao','cartao','centro-custo','conta-despesa']
-          .forEach(id => { const el = document.getElementById(id); if (el) el.disabled = true; });
+        const ids = [
+          'tipo-pagamento','numero-parcelas','data-despesa','periodo-contabil',
+          'periodo-financeiro','data-vencimento-financeiro','fornecedor-compra-id',
+          'is-marketplace','fornecedor-fiscal-id','oc-os','descricao','valor',
+          'cartao','nomenclatura-cartao','centro-custo','conta-despesa',
+          'tipo-documento-fiscal','observacao',
+        ];
+        ids.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.disabled = true;
+        });
       }
 
       await carregarAnexos();
@@ -331,17 +528,15 @@
       const input = document.getElementById('file-input');
       input.addEventListener('change', () => {
         const files = [...input.files];
-        const totalAposMerge = anexos.length + filesPendentes.length + files.length;
-        if (totalAposMerge > 5) {
-          Utils.toast(`Limite de 5 anexos por despesa. Você pode adicionar mais ${5 - anexos.length - filesPendentes.length}.`, 'warning');
-          input.value = '';
-          return;
+        const total = anexos.length + filesPendentes.length + files.length;
+        if (total > 5) {
+          Utils.toast(`Limite de 5 anexos. Você pode adicionar mais ${5 - anexos.length - filesPendentes.length}.`, 'warning');
+          input.value = ''; return;
         }
         const invalidos = files.filter(f => f.size > 10 * 1024 * 1024);
         if (invalidos.length) {
           Utils.toast('Um ou mais arquivos excedem 10 MB.', 'error');
-          input.value = '';
-          return;
+          input.value = ''; return;
         }
         filesPendentes.push(...files);
         renderPendentes();
@@ -368,10 +563,7 @@
         </div>`).join('');
     }
 
-    function removerPendente(i) {
-      filesPendentes.splice(i, 1);
-      renderPendentes();
-    }
+    function removerPendente(i) { filesPendentes.splice(i, 1); renderPendentes(); }
 
     async function downloadAnexo(path, nome) {
       const { data, error } = await supabase.storage.from('despesas-anexos').download(path);
@@ -389,7 +581,6 @@
       await carregarAnexos();
     }
 
-    // ── Upload de arquivos ─────────────────────────────────────
     async function uploadPendentes(dId) {
       const erros = [];
       for (const file of filesPendentes) {
@@ -399,13 +590,12 @@
           .from('despesas-anexos')
           .upload(path, file, { contentType: file.type });
         if (upErr) { erros.push(file.name); continue; }
-
         await supabase.from('despesa_anexos').insert({
-          despesa_id: dId,
-          nome_arquivo: file.name,
-          storage_path: path,
-          tipo_arquivo: file.type,
-          tamanho_bytes: file.size,
+          despesa_id:             dId,
+          nome_arquivo:           file.name,
+          storage_path:           path,
+          tipo_arquivo:           file.type,
+          tamanho_bytes:          file.size,
           uploaded_by_usuario_id: currentUser.id,
         });
       }
@@ -413,7 +603,144 @@
       if (erros.length) Utils.toast(`Falha ao enviar: ${erros.join(', ')}`, 'error');
     }
 
-    // ── Salvar Rascunho ────────────────────────────────────────
+    async function gerarParcelas(dId, payload) {
+      // Remove parcelas existentes e recria
+      await supabase.from('despesa_parcelas').delete().eq('despesa_id', dId);
+
+      if (payload.tipo_pagamento !== 'PARCELADO') return;
+      const n = payload.numero_parcelas || 1;
+      if (n < 2) return;
+
+      const base = payload.periodo_financeiro || payload.periodo_contabil;
+      const [ano, mes] = base.split('-').map(Number);
+      const valorParcela = parseFloat((payload.valor / n).toFixed(2));
+
+      const parcelas = [];
+      for (let i = 0; i < n; i++) {
+        const d = new Date(ano, mes - 1 + i, 1);
+        const pf = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        parcelas.push({
+          despesa_id:        dId,
+          numero_parcela:    i + 1,
+          periodo_financeiro: pf,
+          valor_parcela:     valorParcela,
+        });
+      }
+
+      const { error } = await supabase.from('despesa_parcelas').insert(parcelas);
+      if (error) console.error('[parcelas] Erro ao gerar:', error.message);
+    }
+
+    // ── Montar payload ─────────────────────────────────────
+    function montarPayload(status) {
+      const periodoContabil  = document.getElementById('periodo-contabil').value;
+      const tipoPagamento    = document.getElementById('tipo-pagamento').value;
+      const isMarketplace    = document.getElementById('is-marketplace').checked;
+      const fornCompraId     = document.getElementById('fornecedor-compra-id').value || null;
+      const fornFiscalId     = isMarketplace
+        ? (document.getElementById('fornecedor-fiscal-id').value || null)
+        : fornCompraId;
+      const tipoDoc          = document.getElementById('tipo-documento-fiscal').value || null;
+      const numeroParcelas   = tipoPagamento === 'PARCELADO'
+        ? (parseInt(document.getElementById('numero-parcelas').value) || null)
+        : null;
+
+      const fornCompra  = fornecedoresCache.find(f => f.id === fornCompraId);
+      const fornFiscal  = fornecedoresCache.find(f => f.id === fornFiscalId);
+
+      let statusFiscal = despesa?.status_fiscal || 'NAO_ANALISADO';
+      if (tipoPagamento === 'ADIANTAMENTO' && tipoDoc === 'PENDENTE_NF') {
+        statusFiscal = 'PENDENTE_NF';
+      }
+
+      return {
+        cartao_id:        document.getElementById('cartao').value,
+        centro_custo_id:  document.getElementById('centro-custo').value,
+        conta_despesa_id: document.getElementById('conta-despesa').value,
+        data_despesa:     document.getElementById('data-despesa').value,
+        competencia:      periodoContabil,
+        periodo_contabil: periodoContabil,
+        periodo_financeiro: document.getElementById('periodo-financeiro').value || null,
+        data_vencimento_financeiro: document.getElementById('data-vencimento-financeiro').value || null,
+        fornecedor:       fornCompra?.razao_social || document.getElementById('fornecedor-compra-id').selectedOptions[0]?.text || '',
+        fornecedor_compra_id:  fornCompraId,
+        fornecedor_fiscal_id:  fornFiscalId,
+        is_marketplace:        isMarketplace,
+        fornecedor_compra_nome_snapshot:         fornCompra?.razao_social || null,
+        fornecedor_compra_cnpj_snapshot:         fornCompra?.cnpj || null,
+        fornecedor_compra_codigo_senda_snapshot: fornCompra?.codigo_senda || null,
+        fornecedor_fiscal_nome_snapshot:         fornFiscal?.razao_social || null,
+        fornecedor_fiscal_cnpj_snapshot:         fornFiscal?.cnpj || null,
+        fornecedor_fiscal_codigo_senda_snapshot: fornFiscal?.codigo_senda || null,
+        oc_os:             document.getElementById('oc-os').value.trim() || null,
+        descricao:         document.getElementById('descricao').value.trim(),
+        valor:             parseFloat(document.getElementById('valor').value),
+        nomenclatura_cartao: document.getElementById('nomenclatura-cartao').value.trim() || null,
+        tipo_pagamento:    tipoPagamento || null,
+        numero_parcelas:   numeroParcelas,
+        tipo_documento_fiscal: tipoDoc,
+        status_fiscal:     statusFiscal,
+        observacao:        document.getElementById('observacao').value.trim() || null,
+        status,
+      };
+    }
+
+    // ── Validação ──────────────────────────────────────────
+    function validarFormulario() {
+      const tipoPagamento = document.getElementById('tipo-pagamento').value;
+      if (!tipoPagamento) {
+        Utils.toast('Selecione o tipo de pagamento.', 'error');
+        document.getElementById('tipo-pagamento').focus(); return false;
+      }
+      if (tipoPagamento === 'PARCELADO') {
+        const n = parseInt(document.getElementById('numero-parcelas').value);
+        if (!n || n < 2) {
+          Utils.toast('Para pagamento parcelado, informe ao menos 2 parcelas.', 'error');
+          document.getElementById('numero-parcelas').focus(); return false;
+        }
+      }
+
+      const obrigatorios = [
+        { id: 'data-despesa',         msg: 'Informe a data da despesa.' },
+        { id: 'periodo-contabil',     msg: 'Informe o período contábil.' },
+        { id: 'fornecedor-compra-id', msg: 'Selecione o fornecedor da compra.' },
+        { id: 'oc-os',                msg: 'Informe a OC/OS.' },
+        { id: 'descricao',            msg: 'Informe a descrição.' },
+        { id: 'valor',                msg: 'Informe o valor.' },
+        { id: 'cartao',               msg: 'Selecione o cartão.' },
+        { id: 'nomenclatura-cartao',  msg: 'Informe a nomenclatura no cartão.' },
+        { id: 'centro-custo',         msg: 'Selecione o centro de custo.' },
+        { id: 'conta-despesa',        msg: 'Selecione a conta de despesa.' },
+        { id: 'tipo-documento-fiscal',msg: 'Selecione o tipo de documento fiscal.' },
+      ];
+
+      for (const { id, msg } of obrigatorios) {
+        const el = document.getElementById(id);
+        if (!el || !el.value || el.value === '') {
+          Utils.toast(msg, 'error');
+          el?.focus(); return false;
+        }
+      }
+
+      if (parseFloat(document.getElementById('valor').value) <= 0) {
+        Utils.toast('O valor deve ser maior que zero.', 'error'); return false;
+      }
+
+      // Fornecedor fiscal obrigatório se marketplace + NF/Cupom
+      const isMarketplace = document.getElementById('is-marketplace').checked;
+      const tipoDoc = document.getElementById('tipo-documento-fiscal').value;
+      if (isMarketplace && ['NOTA_FISCAL','CUPOM_FISCAL'].includes(tipoDoc)) {
+        const fiscalId = document.getElementById('fornecedor-fiscal-id').value;
+        if (!fiscalId) {
+          Utils.toast('Informe o fornecedor fiscal para NF/Cupom em marketplace.', 'error');
+          document.getElementById('fornecedor-fiscal-id').focus(); return false;
+        }
+      }
+
+      return true;
+    }
+
+    // ── Salvar Rascunho ────────────────────────────────────
     async function salvarRascunho() {
       if (!validarFormulario()) return;
       const btn = document.getElementById('btn-rascunho');
@@ -423,7 +750,8 @@
       let id = despesaId;
 
       if (!id) {
-        const { data, error } = await supabase.from('despesas').insert({ ...payload, usuario_id: currentUser.id }).select('id').single();
+        const { data, error } = await supabase.from('despesas')
+          .insert({ ...payload, usuario_id: currentUser.id }).select('id').single();
         if (error) { Utils.toast(error.message, 'error'); btn.disabled = false; btn.textContent = 'Salvar Rascunho'; return; }
         id = data.id;
       } else {
@@ -432,30 +760,25 @@
       }
 
       await uploadPendentes(id);
+      await gerarParcelas(id, payload);
       Utils.toast('Rascunho salvo!');
       if (!despesaId) window.location.href = `despesa-form.html?id=${id}`;
       else { await carregarAnexos(); renderAcoes(); btn.disabled = false; btn.textContent = 'Salvar Rascunho'; }
     }
 
-    // ── Enviar para Aprovação ─────────────────────────────────
+    // ── Enviar para Aprovação ──────────────────────────────
     async function enviarParaAprovacao() {
       if (!validarFormulario()) return;
 
-      // Validar comprovante: arquivos pendentes contam mesmo antes do upload
       const totalAnexos = anexos.length + filesPendentes.length;
       if (totalAnexos === 0) {
         Utils.toast('Obrigatório ao menos um comprovante para enviar.', 'error'); return;
       }
-
       if (!confirm('Enviar esta despesa para aprovação? Não será mais possível editá-la.')) return;
 
       const btn = document.getElementById('btn-enviar');
       btn.disabled = true; btn.textContent = 'Enviando…';
 
-      // Sempre gravar/atualizar como RASCUNHO primeiro.
-      // Só promovemos para ENVIADA após confirmar que o upload foi gravado.
-      // Isso evita despesas ENVIADA sem anexo se o upload falhar,
-      // e evita o problema de RLS que impede reverter ENVIADA→RASCUNHO pelo próprio usuário.
       let id = despesaId;
 
       if (!id) {
@@ -464,41 +787,33 @@
           .insert({ ...payload, usuario_id: currentUser.id }).select('id').single();
         if (error) {
           Utils.toast(error.message, 'error');
-          btn.disabled = false; btn.textContent = 'Salvar e Enviar';
-          return;
+          btn.disabled = false; btn.textContent = 'Salvar e Enviar'; return;
         }
         id = data.id;
+        await gerarParcelas(id, payload);
       } else {
-        // Atualiza campos editáveis mantendo status atual (RASCUNHO ou REPROVADA)
         const statusAtual = despesa?.status === 'REPROVADA' ? 'REPROVADA' : 'RASCUNHO';
         const payload = montarPayload(statusAtual);
         const { error } = await supabase.from('despesas').update(payload).eq('id', id);
         if (error) {
           Utils.toast(error.message, 'error');
-          btn.disabled = false; btn.textContent = 'Enviar para Aprovação';
-          return;
+          btn.disabled = false; btn.textContent = 'Enviar para Aprovação'; return;
         }
+        await gerarParcelas(id, payload);
       }
 
-      // Fazer upload dos arquivos pendentes
       await uploadPendentes(id);
 
-      // Confirmar no banco que há pelo menos 1 anexo
       const { count } = await supabase.from('despesa_anexos')
         .select('id', { count: 'exact', head: true }).eq('despesa_id', id);
 
       if (!count) {
-        // Upload falhou: despesa permanece RASCUNHO (sem necessidade de reverter)
         Utils.toast('Nenhum comprovante foi salvo. Verifique os arquivos e tente novamente.', 'error');
-        if (!despesaId) {
-          window.location.href = `despesa-form.html?id=${id}`;
-        } else {
-          btn.disabled = false; btn.textContent = 'Enviar para Aprovação';
-        }
+        if (!despesaId) window.location.href = `despesa-form.html?id=${id}`;
+        else { btn.disabled = false; btn.textContent = 'Enviar para Aprovação'; }
         return;
       }
 
-      // Upload confirmado: agora sim promover para ENVIADA
       const { error: errEnvio } = await supabase.from('despesas')
         .update({ status: 'ENVIADA' }).eq('id', id);
 
@@ -512,36 +827,7 @@
       window.location.href = 'despesas.html';
     }
 
-    function montarPayload(status) {
-      return {
-        cartao_id:        document.getElementById('cartao').value,
-        centro_custo_id:  document.getElementById('centro-custo').value,
-        conta_despesa_id: document.getElementById('conta-despesa').value,
-        data_despesa:     document.getElementById('data-despesa').value,
-        competencia:      document.getElementById('competencia').value,
-        fornecedor:       document.getElementById('fornecedor').value.trim(),
-        descricao:        document.getElementById('descricao').value.trim(),
-        valor:            parseFloat(document.getElementById('valor').value),
-        observacao:       document.getElementById('observacao').value.trim() || null,
-        status,
-      };
-    }
-
-    function validarFormulario() {
-      const obrigatorios = ['data-despesa','competencia','fornecedor','descricao','valor','cartao','centro-custo','conta-despesa'];
-      for (const id of obrigatorios) {
-        const el = document.getElementById(id);
-        if (!el.value || el.value === '') {
-          Utils.toast('Preencha todos os campos obrigatórios.', 'error');
-          el.focus(); return false;
-        }
-      }
-      if (parseFloat(document.getElementById('valor').value) <= 0) {
-        Utils.toast('O valor deve ser maior que zero.', 'error'); return false;
-      }
-      return true;
-    }
-
+    // ── Renderizar ações ───────────────────────────────────
     function renderAcoes() {
       const container = document.getElementById('btns-acoes');
       if (!editavel) { container.innerHTML = ''; return; }
@@ -556,11 +842,6 @@
           class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
           ${temId ? 'Enviar para Aprovação' : 'Salvar e Enviar'}
         </button>`;
-
-      // upload-area e inicializarUpload() são controlados exclusivamente em:
-      //   init()           → nova despesa
-      //   carregarDespesa() → despesa existente
-      // renderAcoes() não toca no upload para evitar listener duplo.
     }
 
     init();

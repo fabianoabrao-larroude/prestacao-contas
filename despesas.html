@@ -33,7 +33,7 @@
 
         <!-- Filtros -->
         <div class="bg-white rounded-xl border border-slate-200 p-4 mb-5">
-          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
             <div>
               <label class="block text-xs font-medium text-slate-600 mb-1">Competência</label>
               <input id="f-competencia" type="month" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -45,11 +45,28 @@
                 <option>RASCUNHO</option><option>ENVIADA</option><option>APROVADA</option><option>REPROVADA</option>
               </select>
             </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Status Fiscal</label>
+              <select id="f-status-fiscal" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Todos</option>
+                <option value="NAO_ANALISADO">Não analisado</option>
+                <option value="DOCUMENTO_VALIDO">Doc. válido</option>
+                <option value="PENDENTE_NF">Pendente NF</option>
+                <option value="RECIBO_SEM_VALOR_FISCAL">Recibo s/ valor</option>
+                <option value="REGULARIZADO">Regularizado</option>
+              </select>
+            </div>
             <div class="col-span-2">
               <label class="block text-xs font-medium text-slate-600 mb-1">Buscar</label>
-              <input id="f-busca" type="text" placeholder="Fornecedor ou descrição…" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <input id="f-busca" type="text" placeholder="Fornecedor, OC/OS ou descrição…" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
-            <div class="flex items-end gap-2 col-span-2">
+            <div class="flex items-end">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input id="f-canceladas" type="checkbox" class="rounded text-blue-600">
+                <span class="text-xs text-slate-600">Incluir canceladas</span>
+              </label>
+            </div>
+            <div class="flex items-end gap-2">
               <button onclick="carregar()" class="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors">Filtrar</button>
               <button onclick="limparFiltros()" class="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg text-sm hover:bg-slate-50 transition-colors">Limpar</button>
             </div>
@@ -65,10 +82,12 @@
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Competência</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fornecedor</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">OC/OS</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Centro de Custo</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Conta</th>
                   <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fiscal</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Anexos</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
                 </tr>
@@ -86,47 +105,107 @@
     </main>
   </div>
 
+  <!-- Modal cancelamento -->
+  <div id="modal-cancel" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-slate-900">Cancelar Despesa</h2>
+        <button onclick="fecharModalCancel()" class="text-slate-400 hover:text-slate-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-sm text-slate-600">Esta ação não pode ser desfeita. A despesa ficará marcada como cancelada e não aparecerá nos relatórios.</p>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Motivo do Cancelamento *</label>
+          <textarea id="motivo-cancel" rows="3" placeholder="Descreva o motivo…"
+            class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+        </div>
+        <div class="flex gap-3 pt-1">
+          <button onclick="fecharModalCancel()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50">Voltar</button>
+          <button onclick="confirmarCancelamento()" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Cancelar Despesa</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     let currentUser = null;
+    let despesaParaCancelar = null;
+
+    const LABEL_STATUS_FISCAL = {
+      NAO_ANALISADO:         'N/A',
+      DOCUMENTO_VALIDO:      'Válido',
+      PENDENTE_NF:           'Pend. NF',
+      RECIBO_SEM_VALOR_FISCAL: 'Recibo',
+      REGULARIZADO:          'Regularizado',
+    };
+
+    const COR_STATUS_FISCAL = {
+      NAO_ANALISADO:         'text-slate-400',
+      DOCUMENTO_VALIDO:      'text-green-600',
+      PENDENTE_NF:           'text-amber-600 font-medium',
+      RECIBO_SEM_VALOR_FISCAL: 'text-orange-500',
+      REGULARIZADO:          'text-blue-600',
+    };
 
     async function carregar() {
-      const comp   = document.getElementById('f-competencia').value;
-      const status = document.getElementById('f-status').value;
-      const busca  = document.getElementById('f-busca').value.trim().toLowerCase();
+      const comp        = document.getElementById('f-competencia').value;
+      const status      = document.getElementById('f-status').value;
+      const statusFisc  = document.getElementById('f-status-fiscal').value;
+      const busca       = document.getElementById('f-busca').value.trim().toLowerCase();
+      const inclCanceladas = document.getElementById('f-canceladas').checked;
 
       let q = supabase
         .from('despesas')
-        .select(`id, data_despesa, competencia, fornecedor, descricao, valor, status,
+        .select(`id, data_despesa, competencia, periodo_contabil, fornecedor,
+                 fornecedor_compra_nome_snapshot, oc_os, valor, status, status_fiscal,
+                 tipo_pagamento, numero_parcelas,
                  centros_custo(nome), contas_despesa(nome),
                  despesa_anexos(id)`)
         .order('data_despesa', { ascending: false });
 
-      if (comp)   q = q.eq('competencia', comp);
-      if (status) q = q.eq('status', status);
+      if (!inclCanceladas) q = q.neq('status', 'CANCELADA');
+      if (comp)       q = q.eq('competencia', comp);
+      if (status)     q = q.eq('status', status);
+      if (statusFisc) q = q.eq('status_fiscal', statusFisc);
 
       const { data, error } = await q;
       if (error) { Utils.toast(error.message, 'error'); return; }
 
       let rows = data || [];
-      if (busca) rows = rows.filter(d =>
-        d.fornecedor.toLowerCase().includes(busca) || d.descricao.toLowerCase().includes(busca));
+      if (busca) rows = rows.filter(d => {
+        const forn = (d.fornecedor_compra_nome_snapshot || d.fornecedor || '').toLowerCase();
+        const oc   = (d.oc_os || '').toLowerCase();
+        return forn.includes(busca) || oc.includes(busca);
+      });
 
-      const total = rows.reduce((s, d) => s + Number(d.valor), 0);
+      const total = rows.filter(d => d.status !== 'CANCELADA').reduce((s, d) => s + Number(d.valor), 0);
       document.getElementById('total-info').textContent  = `${rows.length} registro(s)`;
       document.getElementById('total-valor').textContent = `Total: ${Utils.formatCurrency(total)}`;
 
       Utils.renderTable(document.getElementById('tbody'), rows, d => {
-        const editavel = ['RASCUNHO', 'REPROVADA'].includes(d.status);
-        const qtdAnexos = d.despesa_anexos?.length || 0;
+        const editavel   = ['RASCUNHO', 'REPROVADA'].includes(d.status);
+        const cancelavel = !['APROVADA', 'CANCELADA'].includes(d.status)
+          && (currentUser.perfil === 'ADMIN' || d.usuario_id === currentUser.id);
+        const qtdAnexos  = d.despesa_anexos?.length || 0;
+        const fornNome   = d.fornecedor_compra_nome_snapshot || d.fornecedor || '–';
+        const comp       = d.periodo_contabil || d.competencia;
+        const sfLabel    = LABEL_STATUS_FISCAL[d.status_fiscal] || '–';
+        const sfCor      = COR_STATUS_FISCAL[d.status_fiscal] || 'text-slate-400';
+        const rowCls     = d.status === 'CANCELADA' ? 'bg-slate-50 opacity-60' : '';
+
         return `
-          <tr class="hover:bg-slate-50">
+          <tr class="hover:bg-slate-50 ${rowCls}">
             <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
-            <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(d.competencia)}</td>
-            <td class="px-4 py-3 font-medium text-slate-800">${d.fornecedor}</td>
+            <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(comp)}</td>
+            <td class="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">${fornNome}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">${d.oc_os || '–'}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.contas_despesa?.nome || '–'}</td>
             <td class="px-4 py-3 text-right font-medium text-slate-900 whitespace-nowrap">${Utils.formatCurrency(d.valor)}</td>
             <td class="px-4 py-3">${Utils.statusBadge(d.status)}</td>
+            <td class="px-4 py-3 text-xs ${sfCor}">${sfLabel}</td>
             <td class="px-4 py-3">
               <span class="inline-flex items-center gap-1 text-xs ${qtdAnexos > 0 ? 'text-slate-600' : 'text-red-500'}">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
@@ -137,15 +216,52 @@
               <a href="despesa-form.html?id=${d.id}" class="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2">
                 ${editavel ? 'Editar' : 'Ver'}
               </a>
+              ${cancelavel ? `<button onclick="abrirModalCancel('${d.id}')" class="text-red-500 hover:text-red-700 text-xs font-medium">Cancelar</button>` : ''}
             </td>
           </tr>`;
       });
     }
 
+    function abrirModalCancel(id) {
+      despesaParaCancelar = id;
+      document.getElementById('motivo-cancel').value = '';
+      document.getElementById('modal-cancel').classList.remove('hidden');
+      setTimeout(() => document.getElementById('motivo-cancel').focus(), 100);
+    }
+
+    function fecharModalCancel() {
+      document.getElementById('modal-cancel').classList.add('hidden');
+      despesaParaCancelar = null;
+    }
+
+    async function confirmarCancelamento() {
+      const motivo = document.getElementById('motivo-cancel').value.trim();
+      if (!motivo) { Utils.toast('Informe o motivo do cancelamento.', 'error'); return; }
+      if (!despesaParaCancelar) return;
+
+      const { error } = await supabase.from('despesas').update({
+        status:             'CANCELADA',
+        cancelada_em:       new Date().toISOString(),
+        cancelada_por:      currentUser.id,
+        motivo_cancelamento: motivo,
+      }).eq('id', despesaParaCancelar);
+
+      if (error) { Utils.toast(error.message, 'error'); return; }
+
+      // Evento CANCELAMENTO gerado automaticamente pelo trigger
+      // trg_despesa_cancelamento (SECURITY DEFINER) no banco de dados.
+      // Não inserir aqui: causaria duplicidade.
+      Utils.toast('Despesa cancelada.');
+      fecharModalCancel();
+      carregar();
+    }
+
     function limparFiltros() {
       document.getElementById('f-competencia').value = '';
       document.getElementById('f-status').value = '';
+      document.getElementById('f-status-fiscal').value = '';
       document.getElementById('f-busca').value = '';
+      document.getElementById('f-canceladas').checked = false;
       carregar();
     }
 
@@ -153,7 +269,6 @@
       currentUser = await Layout.init('despesas');
       if (!currentUser) return;
 
-      // Pré-preencher competência com mês atual
       const hoje = new Date();
       document.getElementById('f-competencia').value =
         `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;

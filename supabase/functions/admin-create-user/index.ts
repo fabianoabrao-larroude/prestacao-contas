@@ -302,54 +302,55 @@ serve(async (req) => {
       );
     }
 
-    // 8. Gerar código sequencial correto via função do banco
-    // Regra: pegar maior USR existente e somar +1.
-    // Exemplo: USR001, USR002, USR003, USR004, USR006 => próximo USR007.
-    const { data: codigo, error: codigoErr } = await admin
-      .rpc("proximo_codigo_usuario");
+    // 8+9. Gerar código e inserir em uma única transação de banco.
+    // criar_usuario_operacional() aplica pg_advisory_xact_lock,
+    // valida duplicidade de auth_user_id e email, lê MAX(codigo) e
+    // faz INSERT dentro da mesma transação — sem janela de corrida.
+    const { data: rows, error: insertErr } = await admin
+      .rpc("criar_usuario_operacional", {
+        p_auth_user_id: inviteData.user.id,
+        p_nome:         nome,
+        p_email:        email,
+        p_perfil:       perfil,
+      });
 
-    if (codigoErr || !codigo) {
+    if (insertErr || !rows || rows.length === 0) {
+      // O usuário já existe no Supabase Auth mas o registro operacional
+      // falhou. Remover o Auth user para evitar órfão que impediria
+      // um novo convite para o mesmo e-mail.
+      const { error: deleteErr } = await admin.auth.admin.deleteUser(
+        inviteData.user.id,
+      );
+      if (deleteErr) {
+        // Não fatal para o caller, mas precisa de atenção manual.
+        console.error(
+          "ATENÇÃO: falha ao remover Auth user órfão após erro operacional:",
+          {
+            auth_user_id: inviteData.user.id,
+            email,
+            deleteErr: deleteErr.message,
+          },
+        );
+      }
+
+      console.error("Erro ao criar usuário operacional:", {
+        message: insertErr?.message,
+        code:    insertErr?.code,
+        details: insertErr?.details,
+        hint:    insertErr?.hint,
+        email,
+      });
       return json(
         {
-          error: `Erro ao gerar código do usuário: ${
-            codigoErr?.message ??
-              "função proximo_codigo_usuario não retornou código"
+          error: `Erro ao criar usuário: ${
+            insertErr?.message ?? "criar_usuario_operacional não retornou registro"
           }`,
         },
         500,
       );
     }
 
-    // 9. Criar registro operacional
-    const { data: novoUsuario, error: insertErr } = await admin
-      .from("usuarios")
-      .insert({
-        auth_user_id: inviteData.user.id,
-        codigo,
-        nome,
-        email,
-        perfil,
-        status_acesso: "CONVIDADO",
-        ativo: true,
-      })
-      .select()
-      .single();
-
-    if (insertErr) {
-      console.error("Erro ao criar usuário operacional:", {
-        message: insertErr.message,
-        code: insertErr.code,
-        details: insertErr.details,
-        hint: insertErr.hint,
-        codigo,
-        email,
-      });
-
-      return json(
-        { error: `Erro ao criar usuário: ${insertErr.message}` },
-        500,
-      );
-    }
+    const novoUsuario = rows[0];
 
     // 10. Vínculos com centros de custo
     if (centrosCusto.length > 0) {

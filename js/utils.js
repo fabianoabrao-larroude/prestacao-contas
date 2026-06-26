@@ -31,14 +31,23 @@ const Utils = {
   },
 
   statusBadge(status) {
-    const map = {
+    const LABEL = {
+      RASCUNHO:  'Rascunho',
+      ENVIADA:   'Enviada',
+      APROVADA:  'Aprovada',
+      REPROVADA: 'Reprovada',
+      CANCELADA: 'Cancelada',
+    };
+    const COR = {
       RASCUNHO:  'bg-gray-100 text-gray-700',
       ENVIADA:   'bg-blue-100 text-blue-800',
       APROVADA:  'bg-green-100 text-green-800',
       REPROVADA: 'bg-red-100 text-red-800',
+      CANCELADA: 'bg-slate-100 text-slate-500',
     };
-    const cls = map[status] || 'bg-gray-100 text-gray-600';
-    return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}">${status}</span>`;
+    const cls   = COR[status]   || 'bg-gray-100 text-gray-600';
+    const label = LABEL[status] || status;
+    return `<span class="px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}">${label}</span>`;
   },
 
   ativoBadge(ativo) {

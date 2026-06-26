@@ -60,11 +60,11 @@
               <label class="block text-xs font-medium text-slate-600 mb-1">Status</label>
               <select id="f-status" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Todos</option>
-                <option>RASCUNHO</option>
-                <option>ENVIADA</option>
-                <option>APROVADA</option>
-                <option>REPROVADA</option>
-                <option>CANCELADA</option>
+                <option value="RASCUNHO">Rascunho</option>
+                <option value="ENVIADA">Enviada</option>
+                <option value="APROVADA">Aprovada</option>
+                <option value="REPROVADA">Reprovada</option>
+                <option value="CANCELADA">Cancelada</option>
               </select>
             </div>
             <div>
@@ -129,8 +129,40 @@
   </div>
 
   <script>
-    let abaAtual  = 'geral';
+    let abaAtual    = 'geral';
     let dadosExport = [];
+
+    // ── Mapas de rótulos amigáveis ────────────────────────────
+    const LABEL_TIPO_PAG = {
+      A_VISTA:      'À vista',
+      PARCELADO:    'Parcelado',
+      ADIANTAMENTO: 'Adiantamento',
+    };
+
+    const LABEL_STATUS = {
+      RASCUNHO:  'Rascunho',
+      ENVIADA:   'Enviada',
+      APROVADA:  'Aprovada',
+      REPROVADA: 'Reprovada',
+      CANCELADA: 'Cancelada',
+    };
+
+    const LABEL_STATUS_FISCAL = {
+      NAO_ANALISADO:           'Não analisado',
+      DOCUMENTO_VALIDO:        'Documento válido',
+      PENDENTE_NF:             'Pendente de NF',
+      RECIBO_SEM_VALOR_FISCAL: 'Recibo sem valor fiscal',
+      REGULARIZADO:            'Regularizado',
+    };
+
+    const LABEL_TIPO_DOC = {
+      NOTA_FISCAL:             'Nota fiscal',
+      CUPOM_FISCAL:            'Cupom fiscal',
+      RECIBO_SEM_VALOR_FISCAL: 'Recibo sem valor fiscal',
+      COMPROVANTE_PAGAMENTO:   'Comprovante de pagamento',
+      PENDENTE_NF:             'Pendente de NF',
+      OUTRO:                   'Outro',
+    };
 
     function setAba(aba) {
       abaAtual = aba;
@@ -143,22 +175,21 @@
     }
 
     function montarQuery() {
-      const ini           = document.getElementById('f-data-ini').value;
-      const fim           = document.getElementById('f-data-fim').value;
-      const comp          = document.getElementById('f-comp').value;
-      const status        = document.getElementById('f-status').value;
-      const centro        = document.getElementById('f-centro').value;
-      const cartao        = document.getElementById('f-cartao').value;
+      const ini            = document.getElementById('f-data-ini').value;
+      const fim            = document.getElementById('f-data-fim').value;
+      const comp           = document.getElementById('f-comp').value;
+      const status         = document.getElementById('f-status').value;
+      const centro         = document.getElementById('f-centro').value;
+      const cartao         = document.getElementById('f-cartao').value;
       const inclCanceladas = document.getElementById('f-canceladas').checked;
 
-      // Campos base + novos campos de fornecedor e fiscal
       let q = supabase.from('despesas').select(`
         id, data_despesa, data_cadastro, competencia, periodo_contabil,
         fornecedor, descricao, valor, status, tipo_pagamento, numero_parcelas,
         status_fiscal, tipo_documento_fiscal, oc_os,
         fornecedor_compra_nome_snapshot, fornecedor_compra_cnpj_snapshot,
         fornecedor_compra_codigo_senda_snapshot,
-        fornecedor_fiscal_nome_snapshot,  fornecedor_fiscal_cnpj_snapshot,
+        fornecedor_fiscal_nome_snapshot, fornecedor_fiscal_cnpj_snapshot,
         fornecedor_fiscal_codigo_senda_snapshot,
         is_marketplace, motivo_cancelamento,
         usuarios!despesas_usuario_id_fkey(nome),
@@ -166,9 +197,7 @@
         cartoes_credito(nome, ultimos_4_digitos),
         despesa_anexos(id)`);
 
-      // CANCELADAS ocultas por padrão
       if (!inclCanceladas) q = q.neq('status', 'CANCELADA');
-
       if (ini)    q = q.gte('data_despesa', ini);
       if (fim)    q = q.lte('data_despesa', fim);
       if (comp)   q = q.eq('competencia', comp);
@@ -221,41 +250,37 @@
     }
 
     function renderGeral(rows) {
-      // Visão operacional: fornecedor da compra + fornecedor fiscal separado
-      // Fornecedor fiscal só aparece quando is_marketplace = true
       document.getElementById('thead-resultado').innerHTML = `
         <tr>
           ${['Data','Competência','Usuário','Cartão','Centro','Conta',
              'Forn. Compra','Forn. Fiscal','Descrição','Tipo Pag.',
-             'Valor','Status','Status Fiscal','Anexos']
+             'Valor','Status','Situação Fiscal','Anexos']
             .map(h => `<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">${h}</th>`).join('')}
         </tr>`;
 
       dadosExport = rows.map(d => ({
-        'Data Despesa':       Utils.formatDate(d.data_despesa),
-        'Competência':        Utils.formatCompetencia(d.competencia),
-        'Usuário':            d.usuarios?.nome || '',
-        'Cartão':             `${d.cartoes_credito?.nome || ''} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}`,
-        'Centro Custo':       d.centros_custo?.nome || '',
-        'Conta Despesa':      d.contas_despesa?.nome || '',
-        'Forn. Compra':       fornecedorLabel(d, false),
-        'Forn. Fiscal':       fornecedorFiscalLabel(d),
+        'Data Despesa':          Utils.formatDate(d.data_despesa),
+        'Competência':           Utils.formatCompetencia(d.competencia),
+        'Usuário':               d.usuarios?.nome || '',
+        'Cartão':                `${d.cartoes_credito?.nome || ''} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}`,
+        'Centro Custo':          d.centros_custo?.nome || '',
+        'Conta Despesa':         d.contas_despesa?.nome || '',
+        'Forn. Compra':          fornecedorLabel(d, false),
+        'Forn. Fiscal':          fornecedorFiscalLabel(d),
         'CPF/CNPJ Forn. Compra': Utils.formatCpfCnpj(d.fornecedor_compra_cnpj_snapshot) || '',
         'CPF/CNPJ Forn. Fiscal': Utils.formatCpfCnpj(d.fornecedor_fiscal_cnpj_snapshot) || '',
-        'Cód. Senda Fiscal':  d.fornecedor_fiscal_codigo_senda_snapshot || d.fornecedor_compra_codigo_senda_snapshot || '',
-        'Descrição':          d.descricao,
-        'OC/OS':              d.oc_os || '',
-        'Tipo Pagamento':     d.tipo_pagamento || '',
-        'Nº Parcelas':        d.numero_parcelas || '',
-        'Tipo Documento':     d.tipo_documento_fiscal || '',
-        'Valor':              d.valor,
-        'Status':             d.status,
-        'Status Fiscal':      d.status_fiscal || '',
-        'Motivo Cancelamento': d.motivo_cancelamento || '',
-        'Anexos':             d.despesa_anexos?.length || 0,
+        'Cód. Senda Fiscal':     d.fornecedor_fiscal_codigo_senda_snapshot || d.fornecedor_compra_codigo_senda_snapshot || '',
+        'Descrição':             d.descricao,
+        'OC/OS':                 d.oc_os || '',
+        'Tipo Pagamento':        LABEL_TIPO_PAG[d.tipo_pagamento] || d.tipo_pagamento || '',
+        'Nº Parcelas':           d.numero_parcelas || '',
+        'Tipo Documento':        LABEL_TIPO_DOC[d.tipo_documento_fiscal] || d.tipo_documento_fiscal || '',
+        'Valor':                 d.valor,
+        'Status':                LABEL_STATUS[d.status] || d.status,
+        'Situação Fiscal':       LABEL_STATUS_FISCAL[d.status_fiscal] || d.status_fiscal || '',
+        'Motivo Cancelamento':   d.motivo_cancelamento || '',
+        'Anexos':                d.despesa_anexos?.length || 0,
       }));
-
-      const TIPO_PAG = { A_VISTA: 'À Vista', PARCELADO: 'Parcelado', ADIANTAMENTO: 'Adiantamento' };
 
       Utils.renderTable(document.getElementById('tbody-resultado'), rows, d => {
         const rowCls = d.status === 'CANCELADA' ? 'bg-slate-50 opacity-60' : '';
@@ -270,10 +295,10 @@
             <td class="px-4 py-3 font-medium text-slate-800 text-xs">${fornecedorLabel(d, false)}</td>
             <td class="px-4 py-3 text-slate-500 text-xs">${fornecedorFiscalLabel(d)}</td>
             <td class="px-4 py-3 text-slate-600 max-w-xs truncate">${d.descricao}</td>
-            <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">${TIPO_PAG[d.tipo_pagamento] || '–'}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">${LABEL_TIPO_PAG[d.tipo_pagamento] || '–'}</td>
             <td class="px-4 py-3 text-right font-medium text-slate-900 whitespace-nowrap">${Utils.formatCurrency(d.valor)}</td>
             <td class="px-4 py-3">${Utils.statusBadge(d.status)}</td>
-            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${d.status_fiscal || '–'}</td>
+            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${LABEL_STATUS_FISCAL[d.status_fiscal] || '–'}</td>
             <td class="px-4 py-3 text-center text-slate-600">${d.despesa_anexos?.length || 0}</td>
           </tr>`;
       });
@@ -282,7 +307,7 @@
     function renderAgrupado(rows, keyFn, colLabel) {
       const grupos = {};
       rows.forEach(d => {
-        if (d.status === 'CANCELADA') return; // canceladas nunca entram nos totais agrupados
+        if (d.status === 'CANCELADA') return;
         const k = keyFn(d);
         if (!grupos[k]) grupos[k] = { label: k, total: 0, qtd: 0, aprovado: 0 };
         grupos[k].total += Number(d.valor);
@@ -332,14 +357,13 @@
     // por parcela/período financeiro; A_VISTA e ADIANTAMENTO aparecem como
     // parcela única. Fornecedor fiscal priorizado (visão Senda/fiscal).
     async function gerarFinanceiro() {
-      const ini           = document.getElementById('f-data-ini').value;
-      const fim           = document.getElementById('f-data-fim').value;
-      const comp          = document.getElementById('f-comp').value;
-      const centro        = document.getElementById('f-centro').value;
-      const cartao        = document.getElementById('f-cartao').value;
+      const ini            = document.getElementById('f-data-ini').value;
+      const fim            = document.getElementById('f-data-fim').value;
+      const comp           = document.getElementById('f-comp').value;
+      const centro         = document.getElementById('f-centro').value;
+      const cartao         = document.getElementById('f-cartao').value;
       const inclCanceladas = document.getElementById('f-canceladas').checked;
 
-      // Busca despesas com parcelas
       let qDesp = supabase.from('despesas').select(`
         id, descricao, valor, status, tipo_pagamento, competencia, periodo_contabil,
         fornecedor, fornecedor_fiscal_nome_snapshot, fornecedor_fiscal_codigo_senda_snapshot,
@@ -348,7 +372,7 @@
         usuarios!despesas_usuario_id_fkey(nome),
         centros_custo(nome), contas_despesa(nome),
         cartoes_credito(nome, ultimos_4_digitos),
-        despesa_parcelas(numero_parcela, periodo_financeiro, valor_parcela, pago)`);
+        despesa_parcelas(numero_parcela, periodo_financeiro, valor_parcela)`);
 
       if (!inclCanceladas) qDesp = qDesp.neq('status', 'CANCELADA');
       if (comp)   qDesp = qDesp.eq('competencia', comp);
@@ -363,15 +387,14 @@
       (despesas || []).forEach(d => {
         const parcelas = d.despesa_parcelas?.length
           ? d.despesa_parcelas.sort((a,b) => a.numero_parcela - b.numero_parcela)
-          : [{ numero_parcela: 1, periodo_financeiro: d.periodo_contabil || d.competencia, valor_parcela: d.valor, pago: false }];
+          : [{ numero_parcela: 1, periodo_financeiro: d.periodo_contabil || d.competencia, valor_parcela: d.valor }];
 
         parcelas.forEach(p => {
           if (ini && p.periodo_financeiro && p.periodo_financeiro < ini.substring(0,7)) return;
           if (fim && p.periodo_financeiro && p.periodo_financeiro > fim.substring(0,7)) return;
           linhas.push({
             periodo_financeiro: p.periodo_financeiro,
-            parcela:            `${p.numero_parcela}/${parcelas.length}`,
-            pago:               p.pago,
+            parcela:            `${p.numero_parcela} de ${parcelas.length}`,
             valor_parcela:      p.valor_parcela,
             descricao:          d.descricao,
             tipo_pagamento:     d.tipo_pagamento,
@@ -380,7 +403,6 @@
             centro:             d.centros_custo?.nome || '–',
             conta:              d.contas_despesa?.nome || '–',
             cartao:             `${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}`,
-            // Visão fiscal: prioriza fornecedor_fiscal
             fornecedor_fiscal:  d.fornecedor_fiscal_nome_snapshot || d.fornecedor_compra_nome_snapshot || d.fornecedor || '–',
             codigo_senda:       d.fornecedor_fiscal_codigo_senda_snapshot || d.fornecedor_compra_codigo_senda_snapshot || '–',
           });
@@ -398,7 +420,7 @@
       document.getElementById('thead-resultado').innerHTML = `
         <tr>
           ${['Período Fin.','Parcela','Usuário','Cartão','Centro','Conta',
-             'Fornecedor (Fiscal/Senda)','Cód. Senda','Descrição','Tipo Pag.','Valor','Pago','Status']
+             'Fornecedor (Fiscal/Senda)','Cód. Senda','Descrição','Tipo Pag.','Valor','Status']
             .map(h => `<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">${h}</th>`).join('')}
         </tr>`;
 
@@ -412,23 +434,17 @@
         'Fornecedor Fiscal':  l.fornecedor_fiscal,
         'Cód. Senda':         l.codigo_senda,
         'Descrição':          l.descricao,
-        'Tipo Pagamento':     l.tipo_pagamento || '',
+        'Tipo Pagamento':     LABEL_TIPO_PAG[l.tipo_pagamento] || l.tipo_pagamento || '',
         'Valor Parcela':      l.valor_parcela,
-        'Pago':               l.pago ? 'Sim' : 'Não',
-        'Status Despesa':     l.status,
+        'Status Despesa':     LABEL_STATUS[l.status] || l.status,
       }));
-
-      const TIPO_PAG = { A_VISTA: 'À Vista', PARCELADO: 'Parcelado', ADIANTAMENTO: 'Adiantamento' };
 
       Utils.renderTable(document.getElementById('tbody-resultado'), linhas, l => {
         const rowCls = l.status === 'CANCELADA' ? 'bg-slate-50 opacity-60' : '';
-        const pagoBadge = l.pago
-          ? '<span class="px-2 py-0.5 rounded-full text-xs bg-green-50 text-green-700 border border-green-200">Pago</span>'
-          : '<span class="px-2 py-0.5 rounded-full text-xs bg-slate-50 text-slate-500 border border-slate-200">Pendente</span>';
         return `
           <tr class="hover:bg-slate-50 ${rowCls}">
             <td class="px-4 py-3 font-mono text-xs text-slate-600 whitespace-nowrap">${l.periodo_financeiro || '–'}</td>
-            <td class="px-4 py-3 text-xs text-slate-500 text-center">${l.parcela}</td>
+            <td class="px-4 py-3 text-xs text-slate-500 text-center whitespace-nowrap">${l.parcela}</td>
             <td class="px-4 py-3 text-slate-700 text-xs">${l.usuario}</td>
             <td class="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">${l.cartao}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${l.centro}</td>
@@ -436,9 +452,8 @@
             <td class="px-4 py-3 font-medium text-slate-800 text-xs">${l.fornecedor_fiscal}</td>
             <td class="px-4 py-3 font-mono text-xs text-slate-500">${l.codigo_senda}</td>
             <td class="px-4 py-3 text-slate-600 max-w-xs truncate">${l.descricao}</td>
-            <td class="px-4 py-3 text-xs text-slate-500">${TIPO_PAG[l.tipo_pagamento] || '–'}</td>
+            <td class="px-4 py-3 text-xs text-slate-500">${LABEL_TIPO_PAG[l.tipo_pagamento] || '–'}</td>
             <td class="px-4 py-3 text-right font-semibold text-slate-900 whitespace-nowrap">${Utils.formatCurrency(l.valor_parcela)}</td>
-            <td class="px-4 py-3">${pagoBadge}</td>
             <td class="px-4 py-3">${Utils.statusBadge(l.status)}</td>
           </tr>`;
       });

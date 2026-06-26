@@ -118,8 +118,6 @@ CREATE TABLE IF NOT EXISTS despesa_parcelas (
   periodo_financeiro VARCHAR(7)    NOT NULL CHECK (periodo_financeiro ~ '^\d{4}-\d{2}$'),
   data_vencimento    DATE,
   valor_parcela      NUMERIC(15,2) NOT NULL CHECK (valor_parcela > 0),
-  pago               BOOLEAN       NOT NULL DEFAULT false,
-  data_pagamento     DATE,
   created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
   UNIQUE (despesa_id, numero_parcela)
 );

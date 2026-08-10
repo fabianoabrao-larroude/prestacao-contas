@@ -132,6 +132,39 @@
   <script>
     let currentUser = null;
     let despesaParaCancelar = null;
+    const CHAVE_ESTADO_FILTROS = 'despesas:estado-listagem';
+
+    function estadoAtualFiltros() {
+      return {
+        competencia: document.getElementById('f-competencia').value,
+        status: document.getElementById('f-status').value,
+        statusFiscal: document.getElementById('f-status-fiscal').checked,
+        busca: document.getElementById('f-busca').value,
+        canceladas: document.getElementById('f-canceladas').checked,
+        scrollTop: document.querySelector('main')?.scrollTop || 0,
+      };
+    }
+
+    function salvarEstadoFiltros() {
+      try {
+        sessionStorage.setItem(CHAVE_ESTADO_FILTROS, JSON.stringify(estadoAtualFiltros()));
+      } catch (_) {}
+    }
+
+    function restaurarEstadoFiltros() {
+      try {
+        const estado = JSON.parse(sessionStorage.getItem(CHAVE_ESTADO_FILTROS));
+        if (!estado) return null;
+        document.getElementById('f-competencia').value = estado.competencia || '';
+        document.getElementById('f-status').value = estado.status || '';
+        document.getElementById('f-status-fiscal').checked = !!estado.statusFiscal;
+        document.getElementById('f-busca').value = estado.busca || '';
+        document.getElementById('f-canceladas').checked = !!estado.canceladas;
+        return estado;
+      } catch (_) {
+        return null;
+      }
+    }
 
     async function carregar() {
       const comp           = document.getElementById('f-competencia').value;
@@ -139,6 +172,7 @@
       const statusFisc     = document.getElementById('f-status-fiscal').checked ? 'PENDENTE_NF' : '';
       const busca          = document.getElementById('f-busca').value.trim().toLowerCase();
       const inclCanceladas = document.getElementById('f-canceladas').checked;
+      salvarEstadoFiltros();
 
       let q = supabase
         .from('despesas')
@@ -257,12 +291,25 @@
       currentUser = await Layout.init('despesas');
       if (!currentUser) return;
 
-      const hoje = new Date();
-      document.getElementById('f-competencia').value =
-        `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+      const estadoRestaurado = restaurarEstadoFiltros();
+      if (!estadoRestaurado) {
+        const hoje = new Date();
+        document.getElementById('f-competencia').value =
+          `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+      }
 
       await carregar();
+
+      if (estadoRestaurado?.scrollTop) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            document.querySelector('main').scrollTop = estadoRestaurado.scrollTop;
+          });
+        });
+      }
     })();
+
+    window.addEventListener('pagehide', salvarEstadoFiltros);
   </script>
 </body>
 </html>

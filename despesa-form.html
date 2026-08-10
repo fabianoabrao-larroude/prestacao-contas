@@ -22,7 +22,7 @@
 
         <!-- Header -->
         <div class="flex items-center gap-3 mb-6">
-          <a href="despesas.html" class="text-slate-400 hover:text-slate-600 transition-colors">
+          <a href="despesas.html" onclick="voltarPagina(event)" class="text-slate-400 hover:text-slate-600 transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
           </a>
           <div>
@@ -220,7 +220,7 @@
 
         <!-- Barra de ações -->
         <div id="barra-acoes" class="flex gap-3">
-          <a href="despesas.html" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+          <a href="despesas.html" onclick="voltarPagina(event)" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
             Voltar
           </a>
           <div class="flex-1 flex gap-3 justify-end" id="btns-acoes"></div>
@@ -304,6 +304,20 @@
     let editavel     = false;
     let uploadInitialized = false;
     let fornecedoresCache = [];
+
+    function voltarPagina(event) {
+      const origem = document.referrer;
+      if (origem) {
+        try {
+          if (new URL(origem).origin === window.location.origin) {
+            event.preventDefault();
+            history.back();
+          }
+        } catch (_) {
+          // Se a origem for inválida, o link segue para despesas.html.
+        }
+      }
+    }
 
     // ── Inicialização ──────────────────────────────────────
     async function init() {
@@ -446,7 +460,7 @@
         && (currentUser.perfil === 'ADMIN' || despesa.usuario_id === currentUser.id);
 
       // Preencher campos
-      document.getElementById('page-title').textContent = `Despesa`;
+      document.getElementById('page-title').textContent = `Despesa #${despesa.numero_despesa ?? despesa.id}`;
       document.getElementById('status-badge').innerHTML = Utils.statusBadge(despesa.status);
 
       // Tipo de pagamento

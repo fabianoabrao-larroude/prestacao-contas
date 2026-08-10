@@ -32,10 +32,6 @@ COMMENT ON COLUMN despesas.aprovado_em              IS 'Data/hora da aprovação
 COMMENT ON COLUMN despesas.aprovado_cartao_por_usuario_id IS 'Aprovação pelo aprovador do cartão';
 COMMENT ON COLUMN despesas.aprovado_cartao_em              IS 'Data/hora da aprovação pelo cartão';
 
--- ── 4. Trava de aprovação enquanto há mensagem sem resposta ─
-ALTER TABLE despesas
-  ADD COLUMN IF NOT EXISTS aguardando_resposta BOOLEAN NOT NULL DEFAULT false;
-
 -- ── 5. Conversa por despesa ────────────────────────────────
 CREATE TABLE IF NOT EXISTS despesa_mensagens (
   id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -55,27 +51,6 @@ RETURNS SETOF UUID LANGUAGE SQL STABLE SECURITY DEFINER AS $$
   WHERE u.auth_user_id = auth.uid()
     AND u.ativo = true
 $$;
-
--- ── 7. Trigger: nova mensagem trava/destrava aprovação ─────
--- Se quem escreve é o próprio solicitante da despesa, entende-se como
--- resposta → destrava. Se é qualquer outra pessoa (aprovador de
--- cartão, gestor do centro, ADMIN), entende-se como pedido → trava.
-CREATE OR REPLACE FUNCTION trigger_despesa_mensagem_trava()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE v_usuario_id UUID;
-BEGIN
-  SELECT usuario_id INTO v_usuario_id FROM despesas WHERE id = NEW.despesa_id;
-  UPDATE despesas
-  SET aguardando_resposta = (NEW.autor_usuario_id <> v_usuario_id)
-  WHERE id = NEW.despesa_id;
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_despesa_mensagem_trava ON despesa_mensagens;
-CREATE TRIGGER trg_despesa_mensagem_trava
-  AFTER INSERT ON despesa_mensagens
-  FOR EACH ROW EXECUTE FUNCTION trigger_despesa_mensagem_trava();
 
 -- ── 8. Trigger: aprovação dupla completa → status = APROVADA ──
 -- Fecha status automaticamente quando os dois gates estão preenchidos.
@@ -113,8 +88,6 @@ CREATE POLICY "desp_select" ON despesas
 -- UPDATE: dono edita RASCUNHO/REPROVADA; GESTOR do centro e aprovador
 -- do cartão aprovam/reprovam ENVIADAS (cada um só mexe nos seus
 -- próprios campos de gate na app, mas a policy libera o UPDATE);
--- trava se aguardando_resposta = true (exceto o próprio dono
--- respondendo, que não faz UPDATE de aprovação, só de mensagem).
 DROP POLICY IF EXISTS "desp_update" ON despesas;
 CREATE POLICY "desp_update" ON despesas
   FOR UPDATE TO authenticated
@@ -122,7 +95,7 @@ CREATE POLICY "desp_update" ON despesas
     auth_is_admin()
     OR (usuario_id = auth_usuario_id() AND status IN ('RASCUNHO','REPROVADA'))
     OR (
-      status = 'ENVIADA' AND NOT aguardando_resposta
+      status = 'ENVIADA'
       AND (
         (auth_perfil() = 'GESTOR' AND centro_custo_id IN (SELECT auth_centros_gestor()))
         OR cartao_id IN (SELECT auth_cartoes_aprovador())

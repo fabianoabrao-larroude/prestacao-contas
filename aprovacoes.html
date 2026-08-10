@@ -100,11 +100,6 @@
           <div id="status-dupla" class="grid grid-cols-2 gap-3"></div>
         </div>
 
-        <!-- Trava por conversa em aberto -->
-        <div id="aviso-travado" class="hidden bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          <p class="text-xs text-amber-700 font-medium">Há uma mensagem aguardando resposta do solicitante. A aprovação fica bloqueada até a conversa ser respondida.</p>
-        </div>
-
         <!-- Ações de aprovação (geradas dinamicamente por lado) -->
         <div id="acoes-aprovacao" class="space-y-3"></div>
 
@@ -187,7 +182,6 @@
                  tipo_pagamento, centro_custo_id, cartao_id,
                  aprovado_por_usuario_id, aprovado_em,
                  aprovado_cartao_por_usuario_id, aprovado_cartao_em,
-                 aguardando_resposta,
                  usuarios!despesas_usuario_id_fkey(id, nome),
                  centros_custo(id, nome),
                  cartoes_credito(id, nome, ultimos_4_digitos),
@@ -207,8 +201,7 @@
       document.getElementById('total-info').textContent  = `${rows.length} despesa(s) pendente(s)`;
       document.getElementById('total-valor').textContent = `Total: ${Utils.formatCurrency(total)}`;
 
-      const gateBadge = (ok, aguardando) => {
-        if (aguardando) return '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Travado</span>';
+      const gateBadge = (ok) => {
         return ok
           ? '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Aprovado</span>'
           : '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Pendente</span>';
@@ -225,8 +218,8 @@
             <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}</td>
             <td class="px-4 py-3 text-right font-medium text-slate-900">${Utils.formatCurrency(d.valor)}</td>
-            <td class="px-4 py-3">${gateBadge(!!d.aprovado_por_usuario_id, d.aguardando_resposta)}</td>
-            <td class="px-4 py-3">${gateBadge(!!d.aprovado_cartao_por_usuario_id, d.aguardando_resposta)}</td>
+            <td class="px-4 py-3">${gateBadge(!!d.aprovado_por_usuario_id)}</td>
+            <td class="px-4 py-3">${gateBadge(!!d.aprovado_cartao_por_usuario_id)}</td>
             <td class="px-4 py-3"><span class="text-blue-600 text-xs font-medium">Analisar →</span></td>
           </tr>`;
       });
@@ -317,8 +310,6 @@
         gateInfo('Centro de Custo', !!data.aprovado_por_usuario_id, data.aprovador_centro?.nome || '–', data.aprovado_em) +
         gateInfo('Cartão', !!data.aprovado_cartao_por_usuario_id, data.aprovador_cartao?.nome || '–', data.aprovado_cartao_em);
 
-      document.getElementById('aviso-travado').classList.toggle('hidden', !data.aguardando_resposta);
-
       renderAcoesAprovacao();
       await carregarParticipantes(data);
       await carregarMensagens();
@@ -329,8 +320,6 @@
     function renderAcoesAprovacao() {
       const d = despesaAtual;
       const container = document.getElementById('acoes-aprovacao');
-
-      if (d.aguardando_resposta) { container.innerHTML = ''; return; }
 
       const blocos = [];
 

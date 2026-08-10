@@ -148,6 +148,42 @@ const Layout = {
       </aside>`;
   },
 
+  // ── Badge de aprovações realmente acionáveis pelo usuário ──
+  async atualizarBadgeAprovacoes(user) {
+    const badge = document.getElementById('badge-aprovacoes');
+    if (!badge) return;
+
+    const [{ data: ucc }, { data: cart }] = await Promise.all([
+      supabase.from('usuario_centros_custo')
+        .select('centro_custo_id')
+        .eq('usuario_id', user.id)
+        .eq('papel_no_centro', 'GESTOR')
+        .eq('ativo', true),
+      supabase.from('cartoes_credito')
+        .select('id')
+        .eq('aprovador_usuario_id', user.id),
+    ]);
+    const centros = (ucc || []).map(r => r.centro_custo_id);
+    const cartoes = (cart || []).map(r => r.id);
+
+    if (!centros.length && !cartoes.length) return; // sem alçada nenhuma, sem badge (inclui ADMIN puro)
+
+    const { data: pendentes } = await supabase.from('despesas')
+      .select('centro_custo_id, cartao_id, aprovado_por_usuario_id, aprovado_cartao_por_usuario_id')
+      .eq('status', 'ENVIADA')
+      .neq('usuario_id', user.id);
+
+    const count = (pendentes || []).filter(d =>
+      (centros.includes(d.centro_custo_id) && !d.aprovado_por_usuario_id)
+      || (cartoes.includes(d.cartao_id) && !d.aprovado_cartao_por_usuario_id)
+    ).length;
+
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.classList.remove('hidden');
+    }
+  },
+
   // ── Ponto de entrada principal ─────────────────────────────
   // Toda página autenticada chama Layout.init() no seu script.
   // Retorna o usuário operacional ou null (após mostrar erro na tela).
@@ -200,19 +236,11 @@ const Layout = {
       document.getElementById('app-loading')?.classList.add('hidden');
       document.getElementById('app')?.classList.remove('hidden');
 
-      // Badge de despesas aguardando aprovação (RLS já filtra por alçada:
-      // GESTOR do centro, aprovador do cartão, ou ADMIN)
-      supabase.from('despesas')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'ENVIADA')
-        .neq('usuario_id', user.id)
-        .then(({ count }) => {
-          const badge = document.getElementById('badge-aprovacoes');
-          if (badge && count > 0) {
-            badge.textContent = count > 99 ? '99+' : String(count);
-            badge.classList.remove('hidden');
-          }
-        });
+      // Badge de despesas realmente acionáveis pelo usuário — não é a
+      // fila inteira visível (RLS), é só o que falta ELE aprovar.
+      // ADMIN é analista do processo e não tem alçada de aprovação, então
+      // só conta se ele também for gestor/aprovador designado em algo.
+      Layout.atualizarBadgeAprovacoes(user);
 
       // Atualizar ultimo_login de forma assíncrona (fire-and-forget)
       supabase.from('usuarios')

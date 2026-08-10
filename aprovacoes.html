@@ -159,11 +159,13 @@
       REGULARIZADO:            'Regularizado',
     };
 
+    // ADMIN é analista do processo, não tem governança de aprovação —
+    // só quem é gestor do centro / aprovador do cartão pode agir.
     function temAlcadaCentro(d) {
-      return currentUser.perfil === 'ADMIN' || centrosGestor.includes(d.centro_custo_id);
+      return centrosGestor.includes(d.centro_custo_id);
     }
     function temAlcadaCartao(d) {
-      return currentUser.perfil === 'ADMIN' || cartoesAprovador.includes(d.cartao_id);
+      return cartoesAprovador.includes(d.cartao_id);
     }
 
     async function carregar() {

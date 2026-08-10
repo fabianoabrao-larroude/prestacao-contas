@@ -18,7 +18,7 @@
   <div id="app" class="hidden flex h-screen overflow-hidden">
     <div id="sidebar-container" class="flex-shrink-0"></div>
     <main class="flex-1 overflow-y-auto">
-      <div class="p-6 max-w-7xl mx-auto">
+      <div class="p-6 max-w-[1600px] mx-auto">
 
         <div class="flex items-center justify-between mb-6">
           <div>
@@ -308,16 +308,16 @@
             <td class="px-4 py-3 text-slate-500 font-mono text-xs whitespace-nowrap">#${d.numero_despesa ?? '–'}</td>
             <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
             <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(d.competencia)}</td>
-            <td class="px-4 py-3 text-slate-700">${d.usuarios?.nome || '–'}</td>
+            <td class="px-4 py-3 text-slate-700 whitespace-nowrap">${d.usuarios?.nome || '–'}</td>
             <td class="px-4 py-3">${Utils.statusBadge(d.status)}</td>
             <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${labelGate(d.status, d.aprovado_por_usuario_id, 'CENTRO', d.reprovado_lado)}</td>
             <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${labelGate(d.status, d.aprovado_cartao_por_usuario_id, 'CARTAO', d.reprovado_lado)}</td>
             <td class="px-4 py-3 text-right font-medium text-slate-900 whitespace-nowrap">${Utils.formatCurrency(d.valor)}</td>
             <td class="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}</td>
-            <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
-            <td class="px-4 py-3 text-slate-600 text-xs">${d.contas_despesa?.nome || '–'}</td>
-            <td class="px-4 py-3 font-medium text-slate-800 text-xs">${fornecedorLabel(d, false)}</td>
-            <td class="px-4 py-3 text-slate-500 text-xs">${fornecedorFiscalLabel(d)}</td>
+            <td class="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">${d.centros_custo?.nome || '–'}</td>
+            <td class="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">${d.contas_despesa?.nome || '–'}</td>
+            <td class="px-4 py-3 font-medium text-slate-800 text-xs whitespace-nowrap">${fornecedorLabel(d, false)}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">${fornecedorFiscalLabel(d)}</td>
             <td class="px-4 py-3 text-slate-600 max-w-xs truncate">${d.descricao}</td>
             <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">${LABEL_TIPO_PAG[d.tipo_pagamento] || '–'}</td>
             <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${LABEL_STATUS_FISCAL[d.status_fiscal] || '–'}</td>

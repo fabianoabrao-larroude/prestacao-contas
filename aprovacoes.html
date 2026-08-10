@@ -112,10 +112,16 @@
         <div class="border-t border-slate-200 pt-4">
           <p class="text-xs font-semibold text-slate-700 mb-2">CONVERSA</p>
           <div id="lista-mensagens" class="space-y-2 max-h-56 overflow-y-auto mb-3"></div>
-          <div class="flex gap-2">
-            <textarea id="nova-mensagem" rows="2" placeholder="Pedir informação adicional ao solicitante ou ao gestor…"
-              class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
-            <button onclick="enviarMensagem()" class="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors self-end">Enviar</button>
+          <div class="space-y-2">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Para</label>
+              <select id="msg-destinatario" class="w-full px-2 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
+            </div>
+            <div class="flex gap-2">
+              <textarea id="nova-mensagem" rows="2" placeholder="Pedir informação adicional…"
+                class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+              <button onclick="enviarMensagem()" class="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors self-end">Enviar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -314,6 +320,7 @@
       document.getElementById('aviso-travado').classList.toggle('hidden', !data.aguardando_resposta);
 
       renderAcoesAprovacao();
+      await carregarParticipantes(data);
       await carregarMensagens();
 
       document.getElementById('modal').classList.remove('hidden');
@@ -420,15 +427,48 @@
     let mensagensCache = [];
     let editandoMsgId  = null;
 
+    let participantesAtuais = [];
+
+    async function carregarParticipantes(despesa) {
+      const candidatos = [];
+      if (despesa.usuarios) candidatos.push({ id: despesa.usuario_id, nome: despesa.usuarios.nome, papel: 'Solicitante' });
+
+      const [{ data: gestor }, { data: cartao }] = await Promise.all([
+        supabase.from('usuario_centros_custo')
+          .select('usuario_id, usuarios(nome)')
+          .eq('centro_custo_id', despesa.centro_custo_id)
+          .eq('papel_no_centro', 'GESTOR')
+          .eq('ativo', true)
+          .maybeSingle(),
+        supabase.from('cartoes_credito')
+          .select('aprovador_usuario_id, aprovador:usuarios!cartoes_credito_aprovador_usuario_id_fkey(nome)')
+          .eq('id', despesa.cartao_id)
+          .maybeSingle(),
+      ]);
+      if (gestor?.usuario_id) candidatos.push({ id: gestor.usuario_id, nome: gestor.usuarios?.nome, papel: 'Gestor do Centro' });
+      if (cartao?.aprovador_usuario_id) candidatos.push({ id: cartao.aprovador_usuario_id, nome: cartao.aprovador?.nome, papel: 'Aprovador do Cartão' });
+
+      participantesAtuais = candidatos.filter(c => c.id && c.id !== currentUser.id);
+      // Remove duplicados (ex: mesma pessoa é gestor e aprovador)
+      participantesAtuais = participantesAtuais.filter((c, i) => participantesAtuais.findIndex(x => x.id === c.id) === i);
+
+      const sel = document.getElementById('msg-destinatario');
+      sel.innerHTML = participantesAtuais.length
+        ? participantesAtuais.map(c => `<option value="${c.id}">${c.nome} (${c.papel})</option>`).join('')
+        : '<option value="">Nenhum destinatário disponível</option>';
+    }
+
     async function carregarMensagens() {
       const { data } = await supabase
         .from('despesa_mensagens')
-        .select('id, mensagem, created_at, editado_em, autor_usuario_id, usuarios(nome)')
+        .select('id, mensagem, created_at, editado_em, autor_usuario_id, destinatario_usuario_id, usuarios!despesa_mensagens_autor_usuario_id_fkey(nome), destinatario:usuarios!despesa_mensagens_destinatario_usuario_id_fkey(nome)')
         .eq('despesa_id', despesaAtual.id)
         .order('created_at');
       mensagensCache = data || [];
       editandoMsgId = null;
       renderMensagens();
+
+      await supabase.rpc('marcar_mensagens_lidas', { p_despesa_id: despesaAtual.id });
     }
 
     function renderMensagens() {
@@ -455,7 +495,7 @@
         return `
           <div class="px-3 py-2 rounded-lg ${dono ? 'bg-blue-50' : 'bg-slate-50'} border border-slate-200">
             <div class="flex items-center justify-between">
-              <p class="text-xs font-semibold text-slate-700">${m.usuarios?.nome || '–'}</p>
+              <p class="text-xs font-semibold text-slate-700">${m.usuarios?.nome || '–'}${m.destinatario ? ` <span class="font-normal text-slate-400">→ ${m.destinatario.nome}</span>` : ''}</p>
               <p class="text-xs text-slate-400">${Utils.formatDateTime(m.created_at)}${m.editado_em ? ' · editado' : ''}</p>
             </div>
             <p class="text-sm text-slate-800 mt-0.5">${m.mensagem}</p>
@@ -495,11 +535,14 @@
     async function enviarMensagem() {
       const texto = document.getElementById('nova-mensagem').value.trim();
       if (!texto) return;
+      const destinatarioId = document.getElementById('msg-destinatario').value || null;
+      if (!destinatarioId) { Utils.toast('Selecione um destinatário.', 'warning'); return; }
 
       const { error } = await supabase.from('despesa_mensagens').insert({
-        despesa_id:       despesaAtual.id,
-        autor_usuario_id: currentUser.id,
-        mensagem:         texto,
+        despesa_id:              despesaAtual.id,
+        autor_usuario_id:        currentUser.id,
+        destinatario_usuario_id: destinatarioId,
+        mensagem:                texto,
       });
       if (error) { Utils.toast(error.message, 'error'); return; }
 

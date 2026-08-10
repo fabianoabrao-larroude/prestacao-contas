@@ -235,7 +235,7 @@
               </span>
             </td>
             <td class="px-4 py-3 whitespace-nowrap">
-              <a href="despesa-form.html?id=${d.id}" class="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2">
+              <a href="despesa-form.html?id=${d.id}&numero=${d.numero_despesa}" class="text-blue-600 hover:text-blue-800 text-xs font-medium mr-2">
                 ${editavel ? 'Editar' : 'Ver'}
               </a>
               ${cancelavel ? `<button onclick="abrirModalCancel('${d.id}')" class="text-red-500 hover:text-red-700 text-xs font-medium">Cancelar</button>` : ''}

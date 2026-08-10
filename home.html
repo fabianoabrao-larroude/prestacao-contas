@@ -164,7 +164,7 @@
       if (!msgs.length) { alerta.classList.add('hidden'); return; }
 
       document.getElementById('lista-alerta-mensagens').innerHTML = msgs.map(m => `
-        <a href="despesa-form.html?id=${m.despesa_id}" class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-amber-200 hover:border-amber-400 transition-colors">
+        <a href="despesa-form.html?id=${m.despesa_id}&numero=${m.despesas?.numero_despesa}" class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-amber-200 hover:border-amber-400 transition-colors">
           <span class="text-sm text-slate-700 truncate">
             <span class="font-medium">Despesa #${m.despesas?.numero_despesa ?? '–'}</span>
             — ${m.usuarios?.nome || '–'}: <span class="text-slate-500">${(m.mensagem || '').slice(0, 80)}</span>
@@ -187,7 +187,7 @@
       if (error) { Utils.toast(error.message, 'error'); return; }
       if (!data) { Utils.toast(`Despesa #${numero} não encontrada (ou você não tem acesso a ela).`, 'error'); return; }
 
-      window.location.href = `despesa-form.html?id=${data.id}`;
+      window.location.href = `despesa-form.html?id=${data.id}&numero=${numero}`;
     }
 
     async function carregarDados() {
@@ -196,7 +196,7 @@
       // Query base de despesas
       let query = supabase
         .from('despesas')
-        .select('id, data_despesa, fornecedor, valor, status, competencia, centros_custo(nome)')
+        .select('id, numero_despesa, data_despesa, fornecedor, valor, status, competencia, centros_custo(nome)')
         .order('created_at', { ascending: false });
 
       if (comp) query = query.eq('competencia', comp);
@@ -234,7 +234,7 @@
         return;
       }
       tbody.innerHTML = despesas.map(d => `
-        <tr class="hover:bg-slate-50 cursor-pointer" onclick="window.location='despesa-form.html?id=${d.id}'">
+        <tr class="hover:bg-slate-50 cursor-pointer" onclick="window.location='despesa-form.html?id=${d.id}&numero=${d.numero_despesa}'">
           <td class="px-5 py-3 text-slate-700">${Utils.formatDate(d.data_despesa)}</td>
           <td class="px-5 py-3 text-slate-800 font-medium">${d.fornecedor}</td>
           <td class="px-5 py-3 text-slate-600">${d.centros_custo?.nome || '–'}</td>

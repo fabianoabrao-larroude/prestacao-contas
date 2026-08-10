@@ -297,6 +297,7 @@
   <script>
     const params     = new URLSearchParams(location.search);
     const despesaId  = params.get('id');
+    const numeroParam = params.get('numero');
     let currentUser  = null;
     let despesa      = null;
     let anexos       = [];
@@ -304,6 +305,10 @@
     let editavel     = false;
     let uploadInitialized = false;
     let fornecedoresCache = [];
+
+    if (despesaId && numeroParam) {
+      document.getElementById('page-title').textContent = `Despesa #${numeroParam}`;
+    }
 
     function voltarPagina(event) {
       const origem = document.referrer;

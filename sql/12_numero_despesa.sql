@@ -7,18 +7,15 @@
 
 ALTER TABLE despesas ADD COLUMN IF NOT EXISTS numero_despesa INTEGER UNIQUE;
 
--- Backfill: numera despesas sem número a partir do maior número atual.
--- Isso também é seguro quando a migração é retomada parcialmente.
+-- Backfill: numera as despesas existentes pela ordem de criação.
 UPDATE despesas d
-SET numero_despesa = sub.maior_numero + sub.rn
+SET numero_despesa = sub.rn
 FROM (
-  SELECT id,
-         ROW_NUMBER() OVER (ORDER BY created_at, id) AS rn,
-         COALESCE(MAX(numero_despesa) OVER (), 0) AS maior_numero
+  SELECT id, ROW_NUMBER() OVER (ORDER BY created_at) AS rn
   FROM despesas
+  WHERE numero_despesa IS NULL
 ) sub
-WHERE d.id = sub.id
-  AND d.numero_despesa IS NULL;
+WHERE d.id = sub.id AND d.numero_despesa IS NULL;
 
 -- Trigger: próximas despesas recebem MAX(numero_despesa)+1 automaticamente.
 CREATE OR REPLACE FUNCTION trigger_despesa_numero()

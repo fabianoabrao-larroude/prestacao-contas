@@ -143,7 +143,7 @@
     async function carregar() {
       const [{ data }, { data: usr }] = await Promise.all([
         supabase.from('cartoes_credito').select('*, aprovador:usuarios!cartoes_credito_aprovador_usuario_id_fkey(nome)').order('codigo'),
-        supabase.from('usuarios').select('id, nome').eq('ativo', true).order('nome'),
+        supabase.from('usuarios').select('id, nome').eq('ativo', true).eq('perfil', 'GESTOR').order('nome'),
       ]);
       todos = data || [];
       usuariosTodos = usr || [];

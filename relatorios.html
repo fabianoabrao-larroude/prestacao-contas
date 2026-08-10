@@ -148,8 +148,12 @@
     };
 
     // Só faz sentido mostrar o gate de aprovação depois que a despesa foi enviada.
-    function labelGate(status, aprovadoPorId) {
+    // aprovado_por_usuario_id/aprovado_cartao_por_usuario_id também são usados
+    // para registrar quem reprovou (não só quem aprovou) — por isso checamos
+    // reprovado_lado antes de assumir "Aprovado".
+    function labelGate(status, aprovadoPorId, ladoReprovou, reprovadoLado) {
       if (['RASCUNHO', 'CANCELADA'].includes(status)) return '–';
+      if (status === 'REPROVADA' && reprovadoLado === ladoReprovou) return 'Reprovado';
       return aprovadoPorId ? 'Aprovado' : 'Pendente';
     }
 
@@ -193,7 +197,7 @@
         id, data_despesa, data_cadastro, competencia, periodo_contabil,
         fornecedor, descricao, valor, status, tipo_pagamento, numero_parcelas,
         status_fiscal, tipo_documento_fiscal, oc_os,
-        aprovado_por_usuario_id, aprovado_cartao_por_usuario_id,
+        aprovado_por_usuario_id, aprovado_cartao_por_usuario_id, reprovado_lado,
         fornecedor_compra_nome_snapshot, fornecedor_compra_cnpj_snapshot,
         fornecedor_compra_codigo_senda_snapshot,
         fornecedor_fiscal_nome_snapshot, fornecedor_fiscal_cnpj_snapshot,
@@ -259,9 +263,10 @@
     function renderGeral(rows) {
       document.getElementById('thead-resultado').innerHTML = `
         <tr>
-          ${['Data','Competência','Usuário','Cartão','Centro','Conta',
+          ${['Data','Competência','Usuário','Status','Aprov. Centro','Aprov. Cartão',
+             'Valor','Cartão','Centro','Conta',
              'Forn. Compra','Forn. Fiscal','Descrição','Tipo Pag.',
-             'Valor','Status','Aprov. Centro','Aprov. Cartão','Situação Fiscal','Anexos']
+             'Situação Fiscal','Anexos']
             .map(h => `<th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">${h}</th>`).join('')}
         </tr>`;
 
@@ -284,8 +289,8 @@
         'Tipo Documento':        LABEL_TIPO_DOC[d.tipo_documento_fiscal] || d.tipo_documento_fiscal || '',
         'Valor':                 d.valor,
         'Status':                LABEL_STATUS[d.status] || d.status,
-        'Aprov. Centro':         labelGate(d.status, d.aprovado_por_usuario_id),
-        'Aprov. Cartão':         labelGate(d.status, d.aprovado_cartao_por_usuario_id),
+        'Aprov. Centro':         labelGate(d.status, d.aprovado_por_usuario_id, 'CENTRO', d.reprovado_lado),
+        'Aprov. Cartão':         labelGate(d.status, d.aprovado_cartao_por_usuario_id, 'CARTAO', d.reprovado_lado),
         'Situação Fiscal':       LABEL_STATUS_FISCAL[d.status_fiscal] || d.status_fiscal || '',
         'Motivo Cancelamento':   d.motivo_cancelamento || '',
         'Anexos':                d.despesa_anexos?.length || 0,
@@ -298,6 +303,10 @@
             <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
             <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(d.competencia)}</td>
             <td class="px-4 py-3 text-slate-700">${d.usuarios?.nome || '–'}</td>
+            <td class="px-4 py-3">${Utils.statusBadge(d.status)}</td>
+            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${labelGate(d.status, d.aprovado_por_usuario_id, 'CENTRO', d.reprovado_lado)}</td>
+            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${labelGate(d.status, d.aprovado_cartao_por_usuario_id, 'CARTAO', d.reprovado_lado)}</td>
+            <td class="px-4 py-3 text-right font-medium text-slate-900 whitespace-nowrap">${Utils.formatCurrency(d.valor)}</td>
             <td class="px-4 py-3 text-slate-600 text-xs whitespace-nowrap">${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.contas_despesa?.nome || '–'}</td>
@@ -305,10 +314,6 @@
             <td class="px-4 py-3 text-slate-500 text-xs">${fornecedorFiscalLabel(d)}</td>
             <td class="px-4 py-3 text-slate-600 max-w-xs truncate">${d.descricao}</td>
             <td class="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">${LABEL_TIPO_PAG[d.tipo_pagamento] || '–'}</td>
-            <td class="px-4 py-3 text-right font-medium text-slate-900 whitespace-nowrap">${Utils.formatCurrency(d.valor)}</td>
-            <td class="px-4 py-3">${Utils.statusBadge(d.status)}</td>
-            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${labelGate(d.status, d.aprovado_por_usuario_id)}</td>
-            <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${labelGate(d.status, d.aprovado_cartao_por_usuario_id)}</td>
             <td class="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">${LABEL_STATUS_FISCAL[d.status_fiscal] || '–'}</td>
             <td class="px-4 py-3 text-center text-slate-600">${d.despesa_anexos?.length || 0}</td>
           </tr>`;

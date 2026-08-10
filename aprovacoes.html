@@ -389,8 +389,8 @@
       if (!confirm(`Confirmar aprovação pelo ${ladoAcao === 'centro' ? 'centro de custo' : 'cartão'}?`)) return;
 
       const payload = ladoAcao === 'centro'
-        ? { aprovado_por_usuario_id: currentUser.id, aprovado_em: new Date().toISOString(), motivo_reprovacao: null, observacao_aprovacao: obs }
-        : { aprovado_cartao_por_usuario_id: currentUser.id, aprovado_cartao_em: new Date().toISOString(), observacao_aprovacao: obs };
+        ? { aprovado_por_usuario_id: currentUser.id, aprovado_em: new Date().toISOString(), motivo_reprovacao: null, reprovado_lado: null, observacao_aprovacao: obs }
+        : { aprovado_cartao_por_usuario_id: currentUser.id, aprovado_cartao_em: new Date().toISOString(), motivo_reprovacao: null, reprovado_lado: null, observacao_aprovacao: obs };
 
       const { error } = await supabase.from('despesas').update(payload).eq('id', despesaAtual.id);
       if (error) { Utils.toast(error.message, 'error'); return; }
@@ -404,8 +404,8 @@
       if (!motivo) { Utils.toast('Informe o motivo da reprovação.', 'error'); return; }
 
       const payload = ladoAcao === 'centro'
-        ? { status: 'REPROVADA', aprovado_por_usuario_id: currentUser.id, aprovado_em: new Date().toISOString(), motivo_reprovacao: motivo, observacao_aprovacao: null }
-        : { status: 'REPROVADA', aprovado_cartao_por_usuario_id: currentUser.id, aprovado_cartao_em: new Date().toISOString(), motivo_reprovacao: motivo, observacao_aprovacao: null };
+        ? { status: 'REPROVADA', reprovado_lado: 'CENTRO', aprovado_por_usuario_id: currentUser.id, aprovado_em: new Date().toISOString(), motivo_reprovacao: motivo, observacao_aprovacao: null }
+        : { status: 'REPROVADA', reprovado_lado: 'CARTAO', aprovado_cartao_por_usuario_id: currentUser.id, aprovado_cartao_em: new Date().toISOString(), motivo_reprovacao: motivo, observacao_aprovacao: null };
 
       const { error } = await supabase.from('despesas').update(payload).eq('id', despesaAtual.id);
       if (error) { Utils.toast(error.message, 'error'); return; }

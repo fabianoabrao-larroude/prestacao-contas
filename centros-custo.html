@@ -6,6 +6,7 @@
   <title>Centros de Custo – Prestação de Contas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/utils.js"></script>
@@ -24,10 +25,19 @@
             <h1 class="text-2xl font-bold text-slate-900">Centros de Custo</h1>
             <p class="text-sm text-slate-500 mt-1">Cadastro de centros de custo</p>
           </div>
-          <button onclick="abrirModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Novo Centro
-          </button>
+          <div class="flex gap-2">
+            <button onclick="baixarModelo()" class="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+              Baixar Modelo
+            </button>
+            <button onclick="document.getElementById('file-import').click()" class="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+              Importar Excel
+            </button>
+            <input id="file-import" type="file" accept=".xlsx,.xls" class="hidden">
+            <button onclick="abrirModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Novo Centro
+            </button>
+          </div>
         </div>
 
         <div class="flex gap-3 mb-4">
@@ -156,8 +166,58 @@
       fecharModal(); carregar();
     }
 
+    function baixarModelo() {
+      const ws = XLSX.utils.json_to_sheet([{ Nome: 'Ex: Comercial', Ativo: 'sim' }]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Centros de Custo');
+      XLSX.writeFile(wb, 'modelo_centros_custo.xlsx');
+    }
+
+    async function importarArquivo(file) {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+      if (!linhas.length) { Utils.toast('Planilha vazia.', 'warning'); return; }
+
+      const registros = [];
+      const erros = [];
+      linhas.forEach((l, i) => {
+        const nome = String(l.Nome || l.nome || '').trim();
+        if (!nome) { erros.push(`Linha ${i + 2}: Nome vazio.`); return; }
+        const ativoRaw = String(l.Ativo ?? l.ativo ?? 'sim').trim().toLowerCase();
+        registros.push({ nome, ativo: !['nao','não','false','0'].includes(ativoRaw) });
+      });
+
+      if (erros.length) { Utils.toast(erros[0] + (erros.length > 1 ? ` (+${erros.length - 1} erro(s))` : ''), 'error'); return; }
+      if (!confirm(`Importar ${registros.length} centro(s) de custo? O código de cada um será gerado automaticamente.`)) return;
+
+      // Código gerado sequencialmente a partir do MAX já existente (nunca COUNT+1)
+      const { data: maxRow } = await supabase
+        .from('centros_custo')
+        .select('codigo')
+        .order('codigo', { ascending: false })
+        .limit(1);
+      let proximo = maxRow?.[0]?.codigo ? (parseInt(maxRow[0].codigo.replace(/\D/g, '')) || 0) + 1 : 1;
+
+      const payload = registros.map(r => ({
+        ...r,
+        codigo: `CC${String(proximo++).padStart(3, '0')}`,
+      }));
+
+      const { error } = await supabase.from('centros_custo').insert(payload);
+      if (error) { Utils.toast(error.message, 'error'); return; }
+      Utils.toast(`${payload.length} centro(s) de custo importado(s)!`);
+      carregar();
+    }
+
     document.getElementById('busca').addEventListener('input', Utils.debounce(renderizar));
     document.getElementById('filtro-ativo').addEventListener('change', renderizar);
+    document.getElementById('file-import').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) importarArquivo(file);
+      e.target.value = '';
+    });
 
     (async () => {
       const user = await Layout.init('centros-custo', ['ADMIN']);

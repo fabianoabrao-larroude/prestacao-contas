@@ -242,6 +242,17 @@
           <div id="anexos-salvos" class="mt-3 space-y-2"></div>
         </div>
 
+        <!-- Conversa -->
+        <div id="painel-conversa" class="hidden bg-white rounded-xl border border-slate-200 p-6 mb-5">
+          <h2 class="text-sm font-semibold text-slate-700 mb-4 uppercase tracking-wider">Conversa</h2>
+          <div id="lista-mensagens" class="space-y-2 max-h-56 overflow-y-auto mb-3"></div>
+          <div class="flex gap-2">
+            <textarea id="nova-mensagem" rows="2" placeholder="Responder…"
+              class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            <button onclick="enviarMensagem()" class="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors self-end">Enviar</button>
+          </div>
+        </div>
+
         <!-- Barra de ações -->
         <div id="barra-acoes" class="flex gap-3">
           <a href="despesas.html" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
@@ -252,6 +263,19 @@
 
       </div>
     </main>
+  </div>
+
+  <!-- Modal visualizar anexo -->
+  <div id="modal-visualizar" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+      <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <p id="visualizar-titulo" class="text-sm font-medium text-slate-800 truncate"></p>
+        <button onclick="fecharVisualizar()" class="text-slate-400 hover:text-slate-600 flex-shrink-0 ml-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="visualizar-conteudo" class="flex-1 overflow-auto p-2 bg-slate-100"></div>
+    </div>
   </div>
 
   <script>
@@ -479,6 +503,48 @@
         document.getElementById('upload-area').classList.remove('hidden');
         inicializarUpload();
       }
+
+      document.getElementById('painel-conversa').classList.remove('hidden');
+      await carregarMensagens();
+    }
+
+    async function carregarMensagens() {
+      const { data } = await supabase
+        .from('despesa_mensagens')
+        .select('id, mensagem, created_at, autor_usuario_id, usuarios(nome)')
+        .eq('despesa_id', despesaId)
+        .order('created_at');
+
+      const lista = document.getElementById('lista-mensagens');
+      const msgs = data || [];
+      if (!msgs.length) {
+        lista.innerHTML = '<p class="text-xs text-slate-400">Nenhuma mensagem ainda.</p>';
+        return;
+      }
+      lista.innerHTML = msgs.map(m => `
+        <div class="px-3 py-2 rounded-lg ${m.autor_usuario_id === currentUser.id ? 'bg-blue-50' : 'bg-slate-50'} border border-slate-200">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-slate-700">${m.usuarios?.nome || '–'}</p>
+            <p class="text-xs text-slate-400">${Utils.formatDateTime(m.created_at)}</p>
+          </div>
+          <p class="text-sm text-slate-800 mt-0.5">${m.mensagem}</p>
+        </div>`).join('');
+    }
+
+    async function enviarMensagem() {
+      const texto = document.getElementById('nova-mensagem').value.trim();
+      if (!texto) return;
+
+      const { error } = await supabase.from('despesa_mensagens').insert({
+        despesa_id:       despesaId,
+        autor_usuario_id: currentUser.id,
+        mensagem:         texto,
+      });
+      if (error) { Utils.toast(error.message, 'error'); return; }
+
+      document.getElementById('nova-mensagem').value = '';
+      Utils.toast('Mensagem enviada.');
+      await carregarMensagens();
     }
 
     async function carregarAnexos() {
@@ -515,8 +581,10 @@
             </div>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+            <button onclick="visualizarAnexo('${a.storage_path}', '${a.nome_arquivo}')"
+              class="text-blue-600 hover:text-blue-800 text-xs font-medium">Visualizar</button>
             <button onclick="downloadAnexo('${a.storage_path}', '${a.nome_arquivo}')"
-              class="text-blue-600 hover:text-blue-800 text-xs font-medium">Baixar</button>
+              class="text-slate-500 hover:text-slate-700 text-xs font-medium">Baixar</button>
             ${editavel ? `<button onclick="removerAnexo('${a.id}', '${a.storage_path}')" class="text-red-500 hover:text-red-700 text-xs font-medium">Remover</button>` : ''}
           </div>
         </div>`).join('');
@@ -536,6 +604,12 @@
         const invalidos = files.filter(f => f.size > 10 * 1024 * 1024);
         if (invalidos.length) {
           Utils.toast('Um ou mais arquivos excedem 10 MB.', 'error');
+          input.value = ''; return;
+        }
+        const TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const foraDoPadrao = files.filter(f => !TIPOS_PERMITIDOS.includes(f.type));
+        if (foraDoPadrao.length) {
+          Utils.toast('Apenas arquivos PDF ou imagem (JPG, PNG, WEBP) são permitidos.', 'error');
           input.value = ''; return;
         }
         filesPendentes.push(...files);
@@ -571,6 +645,29 @@
       const url = URL.createObjectURL(data);
       const a = document.createElement('a'); a.href = url; a.download = nome; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function visualizarAnexo(path, nome) {
+      const { data, error } = await supabase.storage.from('despesas-anexos').createSignedUrl(path, 60);
+      if (error) { Utils.toast('Erro ao abrir arquivo.', 'error'); return; }
+
+      const ext = nome.split('.').pop().toLowerCase();
+      const conteudo = document.getElementById('visualizar-conteudo');
+      if (ext === 'pdf') {
+        conteudo.innerHTML = `<iframe src="${data.signedUrl}" class="w-full h-full min-h-[70vh] border-0"></iframe>`;
+      } else if (['jpg','jpeg','png','webp'].includes(ext)) {
+        conteudo.innerHTML = `<img src="${data.signedUrl}" class="max-w-full h-auto mx-auto">`;
+      } else {
+        conteudo.innerHTML = `<p class="text-sm text-slate-500 p-4">Não é possível visualizar este tipo de arquivo. Use "Baixar".</p>`;
+      }
+
+      document.getElementById('visualizar-titulo').textContent = nome;
+      document.getElementById('modal-visualizar').classList.remove('hidden');
+    }
+
+    function fecharVisualizar() {
+      document.getElementById('modal-visualizar').classList.add('hidden');
+      document.getElementById('visualizar-conteudo').innerHTML = '';
     }
 
     async function removerAnexo(id, path) {

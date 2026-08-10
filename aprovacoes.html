@@ -22,7 +22,7 @@
 
         <div class="mb-6">
           <h1 class="text-2xl font-bold text-slate-900">Aprovações</h1>
-          <p class="text-sm text-slate-500 mt-1">Despesas aguardando aprovação</p>
+          <p class="text-sm text-slate-500 mt-1">Despesas aguardando sua aprovação — pelo centro de custo e/ou pelo cartão</p>
         </div>
 
         <!-- Filtros -->
@@ -60,11 +60,11 @@
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Usuário</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fornecedor</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">OC/OS</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Centro Custo</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Competência</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cartão</th>
                   <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Valor</th>
-                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Anexos</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Centro</th>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cartão</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
                 </tr>
               </thead>
@@ -93,46 +93,54 @@
       <div class="px-6 py-5 space-y-4">
         <div id="detalhe-content"></div>
 
-        <!-- Seção aprovar/reprovar -->
-        <div id="secao-aprovacao" class="border-t border-slate-200 pt-4 space-y-3">
-          <!-- Aviso de alçada -->
-          <div id="aviso-alcada" class="hidden bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            <p class="text-xs text-amber-700 font-medium">Você não possui alçada para aprovar esta despesa (centro de custo fora da sua gestão).</p>
-          </div>
+        <!-- Status da aprovação dupla -->
+        <div class="border-t border-slate-200 pt-4">
+          <p class="text-xs font-semibold text-slate-700 mb-2">APROVAÇÃO</p>
+          <div id="status-dupla" class="grid grid-cols-2 gap-3"></div>
+        </div>
 
-          <div id="motivo-wrap" class="hidden">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Motivo da Reprovação *</label>
-            <textarea id="motivo-input" rows="3" placeholder="Descreva o motivo…"
-              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
-          </div>
+        <!-- Trava por conversa em aberto -->
+        <div id="aviso-travado" class="hidden bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p class="text-xs text-amber-700 font-medium">Há uma mensagem aguardando resposta do solicitante. A aprovação fica bloqueada até a conversa ser respondida.</p>
+        </div>
 
-          <div id="obs-wrap" class="hidden">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Observação da Aprovação</label>
-            <textarea id="obs-input" rows="2" placeholder="Observação opcional para o solicitante…"
-              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"></textarea>
-          </div>
+        <!-- Ações de aprovação (geradas dinamicamente por lado) -->
+        <div id="acoes-aprovacao" class="space-y-3"></div>
 
-          <div id="btns-aprovacao" class="flex gap-3">
-            <button onclick="reprovar()" id="btn-reprovar"
-              class="flex-1 px-4 py-2.5 border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 rounded-lg text-sm font-medium transition-colors">
-              Reprovar
-            </button>
-            <button onclick="aprovar()" id="btn-aprovar"
-              class="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
-              Aprovar
-            </button>
+        <!-- Conversa -->
+        <div class="border-t border-slate-200 pt-4">
+          <p class="text-xs font-semibold text-slate-700 mb-2">CONVERSA</p>
+          <div id="lista-mensagens" class="space-y-2 max-h-56 overflow-y-auto mb-3"></div>
+          <div class="flex gap-2">
+            <textarea id="nova-mensagem" rows="2" placeholder="Pedir informação adicional ao solicitante ou ao gestor…"
+              class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+            <button onclick="enviarMensagem()" class="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors self-end">Enviar</button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Modal visualizar anexo -->
+  <div id="modal-visualizar" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+      <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <p id="visualizar-titulo" class="text-sm font-medium text-slate-800 truncate"></p>
+        <button onclick="fecharVisualizar()" class="text-slate-400 hover:text-slate-600 flex-shrink-0 ml-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="visualizar-conteudo" class="flex-1 overflow-auto p-2 bg-slate-100"></div>
+    </div>
+  </div>
+
   <script>
-    let currentUser   = null;
-    let despesaAtual  = null;
-    let reprovando    = false;
-    let aprovando     = false;
-    let centrosGestor = [];
+    let currentUser     = null;
+    let despesaAtual     = null;
+    let centrosGestor    = [];
+    let cartoesAprovador = [];
+    let ladoAcao         = null;   // 'centro' | 'cartao'
+    let tipoAcao         = null;   // 'aprovar' | 'reprovar'
 
     const LABEL_TIPO_DOC = {
       NOTA_FISCAL:             'Nota fiscal',
@@ -151,6 +159,13 @@
       REGULARIZADO:            'Regularizado',
     };
 
+    function temAlcadaCentro(d) {
+      return currentUser.perfil === 'ADMIN' || centrosGestor.includes(d.centro_custo_id);
+    }
+    function temAlcadaCartao(d) {
+      return currentUser.perfil === 'ADMIN' || cartoesAprovador.includes(d.cartao_id);
+    }
+
     async function carregar() {
       const comp     = document.getElementById('f-comp').value;
       const centroId = document.getElementById('f-centro').value;
@@ -160,11 +175,16 @@
         .from('despesas')
         .select(`id, data_despesa, competencia, periodo_contabil, fornecedor,
                  fornecedor_compra_nome_snapshot, oc_os, valor, status, status_fiscal,
-                 tipo_pagamento,
+                 tipo_pagamento, centro_custo_id, cartao_id,
+                 aprovado_por_usuario_id, aprovado_em,
+                 aprovado_cartao_por_usuario_id, aprovado_cartao_em,
+                 aguardando_resposta,
                  usuarios!despesas_usuario_id_fkey(id, nome),
                  centros_custo(id, nome),
+                 cartoes_credito(id, nome, ultimos_4_digitos),
                  despesa_anexos(id)`)
         .eq('status', 'ENVIADA')
+        .neq('usuario_id', currentUser.id)
         .order('data_despesa', { ascending: false });
 
       if (comp)     q = q.eq('competencia', comp);
@@ -178,58 +198,50 @@
       document.getElementById('total-info').textContent  = `${rows.length} despesa(s) pendente(s)`;
       document.getElementById('total-valor').textContent = `Total: ${Utils.formatCurrency(total)}`;
 
+      const gateBadge = (ok, aguardando) => {
+        if (aguardando) return '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">Travado</span>';
+        return ok
+          ? '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Aprovado</span>'
+          : '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Pendente</span>';
+      };
+
       Utils.renderTable(document.getElementById('tbody'), rows, d => {
-        const fornNome    = d.fornecedor_compra_nome_snapshot || d.fornecedor || '–';
-        const comp        = d.periodo_contabil || d.competencia;
-        const fiscalCompl = d.status_fiscal === 'PENDENTE_NF'
-          ? '<span class="ml-1.5 text-xs text-amber-600 font-medium whitespace-nowrap">· Pendente de NF</span>'
-          : '';
+        const fornNome = d.fornecedor_compra_nome_snapshot || d.fornecedor || '–';
         return `
           <tr class="hover:bg-slate-50 cursor-pointer" onclick="abrirModal('${d.id}')">
             <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
             <td class="px-4 py-3 text-slate-800">${d.usuarios?.nome || '–'}</td>
-            <td class="px-4 py-3 max-w-xs">
-              <span class="font-medium text-slate-800">${fornNome}</span>${fiscalCompl}
-            </td>
-            <td class="px-4 py-3 text-slate-500 text-xs">${d.oc_os || '–'}</td>
+            <td class="px-4 py-3 max-w-xs"><span class="font-medium text-slate-800">${fornNome}</span></td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
-            <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(comp)}</td>
+            <td class="px-4 py-3 text-slate-600 text-xs">${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}</td>
             <td class="px-4 py-3 text-right font-medium text-slate-900">${Utils.formatCurrency(d.valor)}</td>
-            <td class="px-4 py-3 text-slate-600 text-xs">${d.despesa_anexos?.length || 0}</td>
+            <td class="px-4 py-3">${gateBadge(!!d.aprovado_por_usuario_id, d.aguardando_resposta)}</td>
+            <td class="px-4 py-3">${gateBadge(!!d.aprovado_cartao_por_usuario_id, d.aguardando_resposta)}</td>
             <td class="px-4 py-3"><span class="text-blue-600 text-xs font-medium">Analisar →</span></td>
           </tr>`;
       });
     }
 
     async function abrirModal(id) {
-      reprovando = false;
-      aprovando  = false;
-      document.getElementById('motivo-wrap').classList.add('hidden');
-      document.getElementById('obs-wrap').classList.add('hidden');
-      document.getElementById('motivo-input').value = '';
-      document.getElementById('obs-input').value    = '';
-      document.getElementById('btn-reprovar').textContent = 'Reprovar';
-      document.getElementById('btn-aprovar').textContent  = 'Aprovar';
-      document.getElementById('btn-reprovar').classList.remove('hidden');
-      document.getElementById('btn-aprovar').classList.remove('hidden');
-      document.getElementById('aviso-alcada').classList.add('hidden');
+      ladoAcao = null;
+      tipoAcao = null;
+      document.getElementById('nova-mensagem').value = '';
 
       const { data } = await supabase
         .from('despesas')
         .select(`*, usuarios!despesas_usuario_id_fkey(nome, email),
                  centros_custo(id, nome), contas_despesa(nome),
-                 cartoes_credito(nome, ultimos_4_digitos),
+                 cartoes_credito(id, nome, ultimos_4_digitos),
                  forn_compra:fornecedores!despesas_fornecedor_compra_id_fkey(razao_social, cnpj),
                  forn_fiscal:fornecedores!despesas_fornecedor_fiscal_id_fkey(razao_social, cnpj),
+                 aprovador_centro:usuarios!despesas_aprovado_por_usuario_id_fkey(nome),
+                 aprovador_cartao:usuarios!despesas_aprovado_cartao_por_usuario_id_fkey(nome),
                  despesa_anexos(id, nome_arquivo, storage_path, tamanho_bytes)`)
         .eq('id', id)
         .single();
 
       if (!data) return;
       despesaAtual = data;
-
-      const temAlcada = currentUser.perfil === 'ADMIN'
-        || centrosGestor.includes(data.centro_custo_id);
 
       const tipoPag = {
         A_VISTA: 'À vista', PARCELADO: 'Parcelado', ADIANTAMENTO: 'Adiantamento',
@@ -274,26 +286,170 @@
                   <svg class="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                   <p class="text-xs text-slate-700 truncate">${a.nome_arquivo}</p>
                 </div>
-                <button onclick="downloadAnexo('${a.storage_path}','${a.nome_arquivo}')" class="text-blue-600 text-xs font-medium ml-2 flex-shrink-0">Baixar</button>
+                <div class="flex gap-2 ml-2 flex-shrink-0">
+                  <button onclick="visualizarAnexo('${a.storage_path}','${a.nome_arquivo}')" class="text-blue-600 text-xs font-medium">Visualizar</button>
+                  <button onclick="downloadAnexo('${a.storage_path}','${a.nome_arquivo}')" class="text-slate-500 text-xs font-medium">Baixar</button>
+                </div>
               </div>`).join('') || '<p class="text-xs text-red-500">Sem anexos.</p>'}
           </div>
         </div>`;
 
-      if (!temAlcada) {
-        document.getElementById('aviso-alcada').classList.remove('hidden');
-        document.getElementById('btn-aprovar').disabled  = true;
-        document.getElementById('btn-reprovar').disabled = true;
-        document.getElementById('btn-aprovar').classList.add('opacity-50', 'cursor-not-allowed');
-        document.getElementById('btn-reprovar').classList.add('opacity-50', 'cursor-not-allowed');
-      } else {
-        document.getElementById('btn-aprovar').disabled  = false;
-        document.getElementById('btn-reprovar').disabled = false;
-        document.getElementById('btn-aprovar').classList.remove('opacity-50', 'cursor-not-allowed');
-        document.getElementById('btn-reprovar').classList.remove('opacity-50', 'cursor-not-allowed');
+      const gateInfo = (label, ok, quem, quando) => `
+        <div class="rounded-lg border ${ok ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-slate-50'} px-3 py-2">
+          <p class="text-xs font-semibold ${ok ? 'text-green-700' : 'text-slate-500'}">${label}</p>
+          <p class="text-sm ${ok ? 'text-green-800' : 'text-slate-400'} mt-0.5">
+            ${ok ? `Aprovado por ${quem} em ${Utils.formatDateTime(quando)}` : 'Pendente'}
+          </p>
+        </div>`;
+
+      document.getElementById('status-dupla').innerHTML =
+        gateInfo('Centro de Custo', !!data.aprovado_por_usuario_id, data.aprovador_centro?.nome || '–', data.aprovado_em) +
+        gateInfo('Cartão', !!data.aprovado_cartao_por_usuario_id, data.aprovador_cartao?.nome || '–', data.aprovado_cartao_em);
+
+      document.getElementById('aviso-travado').classList.toggle('hidden', !data.aguardando_resposta);
+
+      renderAcoesAprovacao();
+      await carregarMensagens();
+
+      document.getElementById('modal').classList.remove('hidden');
+    }
+
+    function renderAcoesAprovacao() {
+      const d = despesaAtual;
+      const container = document.getElementById('acoes-aprovacao');
+
+      if (d.aguardando_resposta) { container.innerHTML = ''; return; }
+
+      const blocos = [];
+
+      if (temAlcadaCentro(d) && !d.aprovado_por_usuario_id) {
+        blocos.push(blocoAcao('centro', 'Centro de Custo'));
+      }
+      if (temAlcadaCartao(d) && !d.aprovado_cartao_por_usuario_id) {
+        blocos.push(blocoAcao('cartao', 'Cartão'));
       }
 
-      document.getElementById('secao-aprovacao').classList.remove('hidden');
-      document.getElementById('modal').classList.remove('hidden');
+      if (!blocos.length) {
+        container.innerHTML = '<p class="text-xs text-slate-400">Você não possui alçada pendente nesta despesa.</p>';
+        return;
+      }
+
+      container.innerHTML = blocos.join('');
+    }
+
+    function blocoAcao(lado, label) {
+      const emAcao = ladoAcao === lado;
+      if (!emAcao) {
+        return `
+          <div class="flex items-center justify-between border border-slate-200 rounded-lg px-3 py-2.5">
+            <p class="text-sm font-medium text-slate-700">${label}</p>
+            <div class="flex gap-2">
+              <button onclick="iniciarAcao('${lado}','reprovar')" class="px-3 py-1.5 border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-medium transition-colors">Reprovar</button>
+              <button onclick="iniciarAcao('${lado}','aprovar')" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors">Aprovar</button>
+            </div>
+          </div>`;
+      }
+      if (tipoAcao === 'reprovar') {
+        return `
+          <div class="border border-red-200 bg-red-50 rounded-lg px-3 py-3 space-y-2">
+            <p class="text-sm font-medium text-red-800">Reprovar pelo ${label}</p>
+            <textarea id="motivo-input" rows="2" placeholder="Motivo da reprovação…"
+              class="w-full px-3 py-2 border border-red-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"></textarea>
+            <div class="flex gap-2">
+              <button onclick="cancelarAcao()" class="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg text-xs">Cancelar</button>
+              <button onclick="confirmarReprovacao()" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium">Confirmar Reprovação</button>
+            </div>
+          </div>`;
+      }
+      return `
+        <div class="border border-green-200 bg-green-50 rounded-lg px-3 py-3 space-y-2">
+          <p class="text-sm font-medium text-green-800">Aprovar pelo ${label}</p>
+          <textarea id="obs-input" rows="2" placeholder="Observação opcional…"
+            class="w-full px-3 py-2 border border-green-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"></textarea>
+          <div class="flex gap-2">
+            <button onclick="cancelarAcao()" class="px-3 py-1.5 border border-slate-300 text-slate-600 rounded-lg text-xs">Cancelar</button>
+            <button onclick="confirmarAprovacao()" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium">Confirmar Aprovação</button>
+          </div>
+        </div>`;
+    }
+
+    function iniciarAcao(lado, tipo) {
+      ladoAcao = lado; tipoAcao = tipo;
+      renderAcoesAprovacao();
+    }
+    function cancelarAcao() {
+      ladoAcao = null; tipoAcao = null;
+      renderAcoesAprovacao();
+    }
+
+    async function confirmarAprovacao() {
+      const obs = document.getElementById('obs-input').value.trim() || null;
+      if (!confirm(`Confirmar aprovação pelo ${ladoAcao === 'centro' ? 'centro de custo' : 'cartão'}?`)) return;
+
+      const payload = ladoAcao === 'centro'
+        ? { aprovado_por_usuario_id: currentUser.id, aprovado_em: new Date().toISOString(), motivo_reprovacao: null, observacao_aprovacao: obs }
+        : { aprovado_cartao_por_usuario_id: currentUser.id, aprovado_cartao_em: new Date().toISOString(), observacao_aprovacao: obs };
+
+      const { error } = await supabase.from('despesas').update(payload).eq('id', despesaAtual.id);
+      if (error) { Utils.toast(error.message, 'error'); return; }
+      Utils.toast('Aprovação registrada!', 'success');
+      fecharModal();
+      carregar();
+    }
+
+    async function confirmarReprovacao() {
+      const motivo = document.getElementById('motivo-input').value.trim();
+      if (!motivo) { Utils.toast('Informe o motivo da reprovação.', 'error'); return; }
+
+      const payload = ladoAcao === 'centro'
+        ? { status: 'REPROVADA', aprovado_por_usuario_id: currentUser.id, aprovado_em: new Date().toISOString(), motivo_reprovacao: motivo, observacao_aprovacao: null }
+        : { status: 'REPROVADA', aprovado_cartao_por_usuario_id: currentUser.id, aprovado_cartao_em: new Date().toISOString(), motivo_reprovacao: motivo, observacao_aprovacao: null };
+
+      const { error } = await supabase.from('despesas').update(payload).eq('id', despesaAtual.id);
+      if (error) { Utils.toast(error.message, 'error'); return; }
+      Utils.toast('Despesa reprovada.', 'warning');
+      fecharModal();
+      carregar();
+    }
+
+    async function carregarMensagens() {
+      const { data } = await supabase
+        .from('despesa_mensagens')
+        .select('id, mensagem, created_at, autor_usuario_id, usuarios(nome)')
+        .eq('despesa_id', despesaAtual.id)
+        .order('created_at');
+
+      const lista = document.getElementById('lista-mensagens');
+      const msgs = data || [];
+      if (!msgs.length) {
+        lista.innerHTML = '<p class="text-xs text-slate-400">Nenhuma mensagem ainda.</p>';
+        return;
+      }
+      lista.innerHTML = msgs.map(m => `
+        <div class="px-3 py-2 rounded-lg ${m.autor_usuario_id === currentUser.id ? 'bg-blue-50' : 'bg-slate-50'} border border-slate-200">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-slate-700">${m.usuarios?.nome || '–'}</p>
+            <p class="text-xs text-slate-400">${Utils.formatDateTime(m.created_at)}</p>
+          </div>
+          <p class="text-sm text-slate-800 mt-0.5">${m.mensagem}</p>
+        </div>`).join('');
+    }
+
+    async function enviarMensagem() {
+      const texto = document.getElementById('nova-mensagem').value.trim();
+      if (!texto) return;
+
+      const { error } = await supabase.from('despesa_mensagens').insert({
+        despesa_id:       despesaAtual.id,
+        autor_usuario_id: currentUser.id,
+        mensagem:         texto,
+      });
+      if (error) { Utils.toast(error.message, 'error'); return; }
+
+      document.getElementById('nova-mensagem').value = '';
+      Utils.toast('Mensagem enviada.');
+      await abrirModal(despesaAtual.id);
+      carregar();
     }
 
     function fecharModal() {
@@ -309,65 +465,27 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    async function aprovar() {
-      if (!despesaAtual) return;
+    async function visualizarAnexo(path, nome) {
+      const { data, error } = await supabase.storage.from('despesas-anexos').createSignedUrl(path, 60);
+      if (error) { Utils.toast('Erro ao abrir arquivo.', 'error'); return; }
 
-      if (!aprovando) {
-        aprovando  = true;
-        reprovando = false;
-        document.getElementById('obs-wrap').classList.remove('hidden');
-        document.getElementById('motivo-wrap').classList.add('hidden');
-        document.getElementById('btn-aprovar').textContent = 'Confirmar Aprovação';
-        document.getElementById('btn-reprovar').classList.add('hidden');
-        return;
+      const ext = nome.split('.').pop().toLowerCase();
+      const conteudo = document.getElementById('visualizar-conteudo');
+      if (ext === 'pdf') {
+        conteudo.innerHTML = `<iframe src="${data.signedUrl}" class="w-full h-full min-h-[70vh] border-0"></iframe>`;
+      } else if (['jpg','jpeg','png','webp'].includes(ext)) {
+        conteudo.innerHTML = `<img src="${data.signedUrl}" class="max-w-full h-auto mx-auto">`;
+      } else {
+        conteudo.innerHTML = `<p class="text-sm text-slate-500 p-4">Não é possível visualizar este tipo de arquivo. Use "Baixar".</p>`;
       }
 
-      const obs = document.getElementById('obs-input').value.trim() || null;
-      if (!confirm(`Aprovar despesa de ${Utils.formatCurrency(despesaAtual.valor)} de ${despesaAtual.usuarios?.nome}?`)) return;
-
-      const { error } = await supabase.from('despesas').update({
-        status:                  'APROVADA',
-        aprovado_por_usuario_id: currentUser.id,
-        aprovado_em:             new Date().toISOString(),
-        motivo_reprovacao:       null,
-        observacao_aprovacao:    obs,
-      }).eq('id', despesaAtual.id);
-
-      if (error) { Utils.toast(error.message, 'error'); return; }
-      Utils.toast('Despesa aprovada!', 'success');
-      fecharModal();
-      carregar();
+      document.getElementById('visualizar-titulo').textContent = nome;
+      document.getElementById('modal-visualizar').classList.remove('hidden');
     }
 
-    async function reprovar() {
-      if (!despesaAtual) return;
-
-      if (!reprovando) {
-        reprovando = true;
-        aprovando  = false;
-        document.getElementById('motivo-wrap').classList.remove('hidden');
-        document.getElementById('obs-wrap').classList.add('hidden');
-        document.getElementById('btn-reprovar').textContent = 'Confirmar Reprovação';
-        document.getElementById('btn-aprovar').classList.add('hidden');
-        document.getElementById('motivo-input').focus();
-        return;
-      }
-
-      const motivo = document.getElementById('motivo-input').value.trim();
-      if (!motivo) { Utils.toast('Informe o motivo da reprovação.', 'error'); return; }
-
-      const { error } = await supabase.from('despesas').update({
-        status:                  'REPROVADA',
-        aprovado_por_usuario_id: currentUser.id,
-        aprovado_em:             new Date().toISOString(),
-        motivo_reprovacao:       motivo,
-        observacao_aprovacao:    null,
-      }).eq('id', despesaAtual.id);
-
-      if (error) { Utils.toast(error.message, 'error'); return; }
-      Utils.toast('Despesa reprovada.', 'warning');
-      fecharModal();
-      carregar();
+    function fecharVisualizar() {
+      document.getElementById('modal-visualizar').classList.add('hidden');
+      document.getElementById('visualizar-conteudo').innerHTML = '';
     }
 
     function limpar() {
@@ -386,21 +504,26 @@
       Utils.populateSelect(document.getElementById('f-usuario'), usr || [], 'id', 'nome');
     }
 
-    async function carregarCentrosGestor() {
+    async function carregarAlcadas() {
       if (currentUser.perfil === 'ADMIN') return;
-      const { data } = await supabase
-        .from('usuario_centros_custo')
-        .select('centro_custo_id')
-        .eq('usuario_id', currentUser.id)
-        .eq('papel_no_centro', 'GESTOR')
-        .eq('ativo', true);
-      centrosGestor = (data || []).map(r => r.centro_custo_id);
+      const [{ data: ucc }, { data: cart }] = await Promise.all([
+        supabase.from('usuario_centros_custo')
+          .select('centro_custo_id')
+          .eq('usuario_id', currentUser.id)
+          .eq('papel_no_centro', 'GESTOR')
+          .eq('ativo', true),
+        supabase.from('cartoes_credito')
+          .select('id')
+          .eq('aprovador_usuario_id', currentUser.id),
+      ]);
+      centrosGestor    = (ucc || []).map(r => r.centro_custo_id);
+      cartoesAprovador = (cart || []).map(r => r.id);
     }
 
     (async () => {
-      currentUser = await Layout.init('aprovacoes', ['ADMIN','GESTOR']);
+      currentUser = await Layout.init('aprovacoes', ['ADMIN','GESTOR','USUARIO']);
       if (!currentUser) return;
-      await Promise.all([popularFiltros(), carregarCentrosGestor()]);
+      await Promise.all([popularFiltros(), carregarAlcadas()]);
       await carregar();
     })();
   </script>

@@ -149,7 +149,7 @@
       // Usamos optional chaining para não quebrar se supabase for null por
       // algum motivo inesperado fora do fluxo normal de validateAppConfig().
       supabase?.auth.getSession().then(({ data: { session } }) => {
-        if (session) window.location.href = 'dashboard.html';
+        if (session) window.location.href = 'home.html';
       }).catch(err => {
         // Falha de rede no getSession não deve impedir o formulário de aparecer.
         console.warn('[login.html] Não foi possível verificar sessão existente:', err.message);
@@ -197,7 +197,7 @@
           return;
         }
 
-        window.location.href = 'dashboard.html';
+        window.location.href = 'home.html';
 
       } catch (err) {
         // Timeout de rede ou erro inesperado

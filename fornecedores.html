@@ -6,6 +6,7 @@
   <title>Fornecedores – Prestação de Contas</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/utils.js"></script>
@@ -24,10 +25,19 @@
             <h1 class="text-2xl font-bold text-slate-900">Fornecedores</h1>
             <p class="text-sm text-slate-500 mt-1">Cadastro de fornecedores da empresa</p>
           </div>
-          <button onclick="abrirModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-            Novo Fornecedor
-          </button>
+          <div class="flex gap-2">
+            <button onclick="baixarModelo()" class="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+              Baixar Modelo
+            </button>
+            <button onclick="document.getElementById('file-import').click()" class="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+              Importar Excel
+            </button>
+            <input id="file-import" type="file" accept=".xlsx,.xls" class="hidden">
+            <button onclick="abrirModal()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+              Novo Fornecedor
+            </button>
+          </div>
         </div>
 
         <div class="flex gap-3 mb-4">
@@ -245,8 +255,65 @@
       carregar();
     }
 
+    function baixarModelo() {
+      const ws = XLSX.utils.json_to_sheet([{
+        'Código Senda': '001234',
+        'CPF/CNPJ': '12345678000190',
+        'Razão Social': 'Ex: Fornecedor Exemplo LTDA',
+        'Nome Fantasia': 'Ex: Fornecedor Exemplo',
+      }]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Fornecedores');
+      XLSX.writeFile(wb, 'modelo_fornecedores.xlsx');
+    }
+
+    async function importarArquivo(file) {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+
+      if (!linhas.length) { Utils.toast('Planilha vazia.', 'warning'); return; }
+
+      const registros = [];
+      const erros = [];
+      linhas.forEach((l, i) => {
+        const razaoSocial = String(l['Razão Social'] || l.razao_social || '').trim();
+        if (!razaoSocial) { erros.push(`Linha ${i + 2}: Razão Social vazia.`); return; }
+
+        const cnpjRaw = Utils.limparCpfCnpj(String(l['CPF/CNPJ'] || l.cnpj || ''));
+        if (cnpjRaw && cnpjRaw.length !== 11 && cnpjRaw.length !== 14) {
+          erros.push(`Linha ${i + 2}: CPF/CNPJ inválido (${cnpjRaw.length} dígitos).`);
+          return;
+        }
+
+        registros.push({
+          razao_social:  razaoSocial,
+          nome_fantasia: String(l['Nome Fantasia'] || l.nome_fantasia || '').trim() || null,
+          cnpj:          cnpjRaw || null,
+          codigo_senda:  String(l['Código Senda'] || l.codigo_senda || '').trim() || null,
+          ativo:         true,
+        });
+      });
+
+      if (erros.length) { Utils.toast(erros[0] + (erros.length > 1 ? ` (+${erros.length - 1} erro(s))` : ''), 'error'); return; }
+      if (!confirm(`Importar ${registros.length} fornecedor(es)?`)) return;
+
+      const { error } = await supabase.from('fornecedores').insert(registros);
+      if (error) {
+        Utils.toast(error.message.includes('unique') ? 'CPF/CNPJ ou Código Senda duplicado na planilha ou já cadastrado.' : error.message, 'error');
+        return;
+      }
+      Utils.toast(`${registros.length} fornecedor(es) importado(s)!`);
+      carregar();
+    }
+
     document.getElementById('busca').addEventListener('input', Utils.debounce(renderizar));
     document.getElementById('filtro-ativo').addEventListener('change', renderizar);
+    document.getElementById('file-import').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) importarArquivo(file);
+      e.target.value = '';
+    });
 
     (async () => {
       const user = await Layout.init('fornecedores', ['ADMIN']);

@@ -47,6 +47,7 @@
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bandeira</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Final</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fechamento</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Aprovador</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
                 <th class="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ações</th>
               </tr>
@@ -113,6 +114,13 @@
               class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Cód.">
           </div>
         </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Aprovador do Cartão</label>
+          <select id="edit-aprovador" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="">Sem aprovador definido</option>
+          </select>
+          <p class="text-xs text-slate-400 mt-1">Responsável por validar as despesas lançadas neste cartão, independente do gestor do centro de custo.</p>
+        </div>
         <div class="flex items-center gap-2">
           <input id="edit-ativo" type="checkbox" checked class="rounded text-blue-600">
           <label class="text-sm text-slate-700">Ativo</label>
@@ -128,10 +136,16 @@
 
   <script>
     let todos = [];
+    let usuariosTodos = [];
 
     async function carregar() {
-      const { data } = await supabase.from('cartoes_credito').select('*').order('codigo');
+      const [{ data }, { data: usr }] = await Promise.all([
+        supabase.from('cartoes_credito').select('*, aprovador:usuarios!cartoes_credito_aprovador_usuario_id_fkey(nome)').order('codigo'),
+        supabase.from('usuarios').select('id, nome').eq('ativo', true).order('nome'),
+      ]);
       todos = data || [];
+      usuariosTodos = usr || [];
+      Utils.populateSelect(document.getElementById('edit-aprovador'), usuariosTodos, 'id', 'nome', 'Sem aprovador definido');
       renderizar();
     }
 
@@ -156,6 +170,7 @@
           <td class="px-5 py-3 text-slate-500 text-xs">
             ${r.dia_fechamento_fatura ? `Fech. dia ${r.dia_fechamento_fatura} / Venc. dia ${r.dia_vencimento_fatura || '–'}` : '–'}
           </td>
+          <td class="px-5 py-3 text-slate-600 text-xs">${r.aprovador?.nome || '–'}</td>
           <td class="px-5 py-3">${Utils.ativoBadge(r.ativo)}</td>
           <td class="px-5 py-3">
             <button onclick='editar(${JSON.stringify(r)})' class="text-blue-600 hover:text-blue-800 text-xs font-medium">Editar</button>
@@ -174,6 +189,7 @@
       document.getElementById('edit-fechamento').value    = item?.dia_fechamento_fatura || '';
       document.getElementById('edit-vencimento').value    = item?.dia_vencimento_fatura || '';
       document.getElementById('edit-conta-trans').value   = item?.conta_transitoria_codigo || '';
+      document.getElementById('edit-aprovador').value     = item?.aprovador_usuario_id || '';
       document.getElementById('edit-ativo').checked       = item ? item.ativo : true;
       document.getElementById('edit-codigo').disabled     = !!item;
       document.getElementById('edit-digitos').disabled    = !!item;
@@ -193,6 +209,7 @@
       const fechamento  = parseInt(document.getElementById('edit-fechamento').value) || null;
       const vencimento  = parseInt(document.getElementById('edit-vencimento').value) || null;
       const contaTrans  = document.getElementById('edit-conta-trans').value.trim() || null;
+      const aprovadorId = document.getElementById('edit-aprovador').value || null;
       const ativo       = document.getElementById('edit-ativo').checked;
       const msg         = document.getElementById('msg-modal');
 
@@ -208,6 +225,7 @@
         dia_fechamento_fatura:    fechamento,
         dia_vencimento_fatura:    vencimento,
         conta_transitoria_codigo: contaTrans,
+        aprovador_usuario_id:     aprovadorId,
       };
 
       let error;

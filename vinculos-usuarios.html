@@ -259,6 +259,13 @@
 
     function fecharModal(id) { document.getElementById(id).classList.add('hidden'); }
 
+    function mensagemErroVinculo(error) {
+      if (error.message.includes('idx_ucc_um_gestor_por_centro')) {
+        return 'Este centro de custo já tem um gestor ativo. Desvincule o gestor atual antes de definir outro.';
+      }
+      return error.message;
+    }
+
     async function vincularCentro() {
       const uid      = document.getElementById('sel-usuario').value;
       const centroId = document.getElementById('sel-centro').value;
@@ -269,7 +276,7 @@
         { usuario_id: uid, centro_custo_id: centroId, papel_no_centro: papel, ativo: true },
         { onConflict: 'usuario_id,centro_custo_id' }
       );
-      if (error) { Utils.toast(error.message, 'error'); return; }
+      if (error) { Utils.toast(mensagemErroVinculo(error), 'error'); return; }
       Utils.toast('Centro vinculado!');
       fecharModal('modal-centro');
       await carregarVinculos();
@@ -284,7 +291,7 @@
         .update({ papel_no_centro: papel })
         .eq('id', id);
 
-      if (error) { Utils.toast(error.message, 'error'); return; }
+      if (error) { Utils.toast(mensagemErroVinculo(error), 'error'); return; }
       Utils.toast(`Papel alterado para ${PAPEL_LABEL[papel]}.`);
       fecharModal('modal-editar-papel');
       await carregarVinculos();

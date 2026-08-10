@@ -78,6 +78,7 @@
             <table class="w-full text-sm">
               <thead class="bg-slate-50 border-b border-slate-200">
                 <tr>
+                  <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">ID</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Data</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Competência</th>
                   <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Solicitante</th>
@@ -141,7 +142,7 @@
 
       let q = supabase
         .from('despesas')
-        .select(`id, data_despesa, competencia, periodo_contabil, fornecedor,
+        .select(`id, numero_despesa, data_despesa, competencia, periodo_contabil, fornecedor,
                  fornecedor_compra_nome_snapshot, oc_os, valor, status, status_fiscal,
                  tipo_pagamento, numero_parcelas, usuario_id,
                  centros_custo(nome), contas_despesa(nome),
@@ -183,6 +184,7 @@
 
         return `
           <tr class="hover:bg-slate-50 ${rowCls}">
+            <td class="px-4 py-3 text-slate-500 font-mono text-xs whitespace-nowrap">#${d.numero_despesa ?? '–'}</td>
             <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
             <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(comp)}</td>
             <td class="px-4 py-3 text-slate-600 text-xs max-w-[140px] truncate">${solicitante}</td>

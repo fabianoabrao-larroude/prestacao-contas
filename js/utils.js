@@ -33,7 +33,7 @@ const Utils = {
   statusBadge(status) {
     const LABEL = {
       RASCUNHO:  'Rascunho',
-      ENVIADA:   'Pendente de Aprovação',
+      ENVIADA:   'Pendente',
       APROVADA:  'Aprovada',
       REPROVADA: 'Reprovada',
       CANCELADA: 'Cancelada',

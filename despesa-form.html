@@ -18,7 +18,7 @@
   <div id="app" class="hidden flex h-screen overflow-hidden">
     <div id="sidebar-container" class="flex-shrink-0"></div>
     <main class="flex-1 overflow-y-auto">
-      <div class="p-6 max-w-3xl mx-auto">
+      <div class="p-6 max-w-6xl mx-auto">
 
         <!-- Header -->
         <div class="flex items-center gap-3 mb-6">
@@ -45,6 +45,9 @@
           <p class="text-sm font-medium text-slate-700">Despesa cancelada</p>
           <p class="text-sm text-slate-500 mt-1" id="motivo-cancelamento-texto"></p>
         </div>
+
+        <div class="lg:grid lg:grid-cols-3 lg:gap-6 lg:items-start">
+        <div class="lg:col-span-2">
 
         <!-- Formulário principal -->
         <div class="bg-white rounded-xl border border-slate-200 p-6 mb-5">
@@ -215,6 +218,18 @@
           </div>
         </div>
 
+        <!-- Barra de ações -->
+        <div id="barra-acoes" class="flex gap-3">
+          <a href="despesas.html" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
+            Voltar
+          </a>
+          <div class="flex-1 flex gap-3 justify-end" id="btns-acoes"></div>
+        </div>
+
+        </div>
+        <!-- Coluna lateral: Anexos + Conversa (fixos à direita no desktop, empilhados no mobile) -->
+        <div class="lg:col-span-1 lg:sticky lg:top-6">
+
         <!-- 19. Anexos -->
         <div class="bg-white rounded-xl border border-slate-200 p-6 mb-5">
           <div class="flex items-center justify-between mb-4">
@@ -253,12 +268,7 @@
           </div>
         </div>
 
-        <!-- Barra de ações -->
-        <div id="barra-acoes" class="flex gap-3">
-          <a href="despesas.html" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
-            Voltar
-          </a>
-          <div class="flex-1 flex gap-3 justify-end" id="btns-acoes"></div>
+        </div>
         </div>
 
       </div>

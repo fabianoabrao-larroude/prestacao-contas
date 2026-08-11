@@ -151,9 +151,22 @@ const Layout = {
   },
 
   // ── Notificações do navegador (Web Notification API) ───────
-  // Só avisa sobre chegadas NOVAS durante o polling, nunca sobre a
-  // contagem que já existia quando a página carregou.
-  _prevCounts: {},
+  // Só avisa sobre chegadas NOVAS, nunca sobre a contagem que já
+  // existia. Guardado em localStorage (não só em memória) para
+  // sobreviver a recarregar a página — senão todo F5 reseta a
+  // referência e a próxima checagem nunca "aumenta" de verdade.
+  _chaveContagem(user, tipo) {
+    return `prestacontas_alerta_${tipo}_${user.id}`;
+  },
+
+  _lerContagemAnterior(user, tipo) {
+    const v = localStorage.getItem(Layout._chaveContagem(user, tipo));
+    return v === null ? null : parseInt(v, 10);
+  },
+
+  _salvarContagem(user, tipo, count) {
+    localStorage.setItem(Layout._chaveContagem(user, tipo), String(count));
+  },
 
   pedirPermissaoNotificacao() {
     if (!('Notification' in window)) return;
@@ -211,15 +224,15 @@ const Layout = {
       badge.classList.remove('hidden');
     }
 
-    const anterior = Layout._prevCounts.aprovacoes;
-    if (anterior !== undefined && count > anterior) {
+    const anterior = Layout._lerContagemAnterior(user, 'aprovacoes');
+    if (anterior !== null && count > anterior) {
       Layout.notificar(
         'Nova despesa para aprovar',
         `Você tem ${count} despesa(s) aguardando sua aprovação.`,
         'aprovacoes.html'
       );
     }
-    Layout._prevCounts.aprovacoes = count;
+    Layout._salvarContagem(user, 'aprovacoes', count);
   },
 
   // ── Badge de mensagens não lidas endereçadas ao usuário ────
@@ -239,15 +252,15 @@ const Layout = {
       badge.classList.remove('hidden');
     }
 
-    const anterior = Layout._prevCounts.mensagens;
-    if (anterior !== undefined && count > anterior) {
+    const anterior = Layout._lerContagemAnterior(user, 'mensagens');
+    if (anterior !== null && count > anterior) {
       Layout.notificar(
         'Nova mensagem',
         `Você tem ${count} mensagem(ns) não lida(s).`,
         'mensagens.html'
       );
     }
-    Layout._prevCounts.mensagens = count;
+    Layout._salvarContagem(user, 'mensagens', count);
   },
 
   // ── Ponto de entrada principal ─────────────────────────────

@@ -43,12 +43,6 @@
           </div>
         </div>
 
-        <!-- Alerta de mensagens não lidas -->
-        <div id="alerta-mensagens" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-          <p class="text-sm font-semibold text-amber-800 mb-2">Mensagens aguardando você</p>
-          <div id="lista-alerta-mensagens" class="space-y-1.5"></div>
-        </div>
-
         <!-- Filtro de competência -->
         <div class="flex items-center gap-3 mb-6">
           <label class="text-sm font-medium text-slate-600">Competência:</label>
@@ -151,29 +145,6 @@
   <script>
     let currentUser = null;
 
-    async function carregarMensagensNaoLidas() {
-      const { data } = await supabase
-        .from('despesa_mensagens')
-        .select('id, mensagem, despesa_id, despesas(numero_despesa), usuarios!despesa_mensagens_autor_usuario_id_fkey(nome)')
-        .eq('destinatario_usuario_id', currentUser.id)
-        .is('lido_em', null)
-        .order('created_at');
-
-      const msgs = data || [];
-      const alerta = document.getElementById('alerta-mensagens');
-      if (!msgs.length) { alerta.classList.add('hidden'); return; }
-
-      document.getElementById('lista-alerta-mensagens').innerHTML = msgs.map(m => `
-        <a href="despesa-form.html?id=${m.despesa_id}&numero=${m.despesas?.numero_despesa}" class="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-amber-200 hover:border-amber-400 transition-colors">
-          <span class="text-sm text-slate-700 truncate">
-            <span class="font-medium">Despesa #${m.despesas?.numero_despesa ?? '–'}</span>
-            — ${m.usuarios?.nome || '–'}: <span class="text-slate-500">${(m.mensagem || '').slice(0, 80)}</span>
-          </span>
-          <span class="text-xs text-amber-700 font-medium flex-shrink-0 ml-2">Abrir →</span>
-        </a>`).join('');
-      alerta.classList.remove('hidden');
-    }
-
     async function irParaDespesa() {
       const numero = parseInt(document.getElementById('busca-numero').value);
       if (!numero) { Utils.toast('Informe o número da despesa.', 'warning'); return; }
@@ -257,7 +228,6 @@
       const comp = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
       document.getElementById('filtro-competencia').value = comp;
 
-      await carregarMensagensNaoLidas();
       await carregarDados();
     })();
   </script>

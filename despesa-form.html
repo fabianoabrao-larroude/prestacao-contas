@@ -564,7 +564,7 @@
       const candidatos = [];
       if (d.usuarios) candidatos.push({ id: d.usuario_id, nome: d.usuarios.nome, papel: 'Solicitante' });
 
-      const [{ data: gestor }, { data: cartao }] = await Promise.all([
+      const [{ data: gestor }, { data: cartao }, { data: admins }] = await Promise.all([
         supabase.from('usuario_centros_custo')
           .select('usuario_id, usuarios(nome)')
           .eq('centro_custo_id', d.centro_custo_id)
@@ -575,9 +575,11 @@
           .select('aprovador_usuario_id, aprovador:usuarios!cartoes_credito_aprovador_usuario_id_fkey(nome)')
           .eq('id', d.cartao_id)
           .maybeSingle(),
+        supabase.from('usuarios').select('id, nome').eq('perfil', 'ADMIN').eq('ativo', true),
       ]);
       if (gestor?.usuario_id) candidatos.push({ id: gestor.usuario_id, nome: gestor.usuarios?.nome, papel: 'Gestor do Centro' });
       if (cartao?.aprovador_usuario_id) candidatos.push({ id: cartao.aprovador_usuario_id, nome: cartao.aprovador?.nome, papel: 'Aprovador do Cartão' });
+      (admins || []).forEach(a => candidatos.push({ id: a.id, nome: a.nome, papel: 'Administrador' }));
 
       participantesAtuais = candidatos.filter(c => c.id && c.id !== currentUser.id);
       participantesAtuais = participantesAtuais.filter((c, i) => participantesAtuais.findIndex(x => x.id === c.id) === i);

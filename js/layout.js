@@ -263,6 +263,30 @@ const Layout = {
     Layout._salvarContagem(user, 'mensagens', count);
   },
 
+  // ── Lembrete periódico para quem ainda não leu/aprovou ─────
+  // Roda de hora em hora, independente de ter "aumentado" — reforça o
+  // alerta enquanto o badge continuar visível. Lê o badge já calculado
+  // pelo polling de 60s (não repete a query de alçada).
+  lembretePeriodico() {
+    const badgeAprov = document.getElementById('badge-aprovacoes');
+    if (badgeAprov && !badgeAprov.classList.contains('hidden')) {
+      Layout.notificar(
+        'Lembrete: aprovações pendentes',
+        `Você ainda tem ${badgeAprov.textContent} despesa(s) aguardando sua aprovação.`,
+        'aprovacoes.html'
+      );
+    }
+
+    const badgeMsg = document.getElementById('badge-mensagens');
+    if (badgeMsg && !badgeMsg.classList.contains('hidden')) {
+      Layout.notificar(
+        'Lembrete: mensagens não lidas',
+        `Você ainda tem ${badgeMsg.textContent} mensagem(ns) não lida(s).`,
+        'mensagens.html'
+      );
+    }
+  },
+
   // ── Ponto de entrada principal ─────────────────────────────
   // Toda página autenticada chama Layout.init() no seu script.
   // Retorna o usuário operacional ou null (após mostrar erro na tela).
@@ -330,6 +354,10 @@ const Layout = {
         Layout.atualizarBadgeAprovacoes(user);
         Layout.atualizarBadgeMensagens(user);
       }, 60000);
+
+      // Lembrete de hora em hora enquanto houver pendência não lida/aprovada
+      clearInterval(Layout._lembreteInterval);
+      Layout._lembreteInterval = setInterval(Layout.lembretePeriodico, 60 * 60000);
 
       // Atualizar ultimo_login de forma assíncrona (fire-and-forget)
       supabase.from('usuarios')

@@ -164,7 +164,9 @@ const Layout = {
 
   notificar(titulo, corpo, url) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    const n = new Notification(`PrestaContas · ${titulo}`, { body: corpo, tag: url });
+    // tag único por disparo — tag repetida faz o navegador substituir a
+    // notificação anterior em silêncio, sem alertar de novo
+    const n = new Notification(`PrestaContas · ${titulo}`, { body: corpo, tag: `${url}-${Date.now()}` });
     n.onclick = () => {
       window.focus();
       window.location.href = url;

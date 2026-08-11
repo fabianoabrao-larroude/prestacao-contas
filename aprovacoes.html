@@ -177,7 +177,7 @@
 
       let q = supabase
         .from('despesas')
-        .select(`id, numero_despesa, data_despesa, competencia, periodo_contabil, fornecedor,
+        .select(`id, numero_despesa, titulo, data_despesa, competencia, periodo_contabil, fornecedor,
                  fornecedor_compra_nome_snapshot, oc_os, valor, status, status_fiscal,
                  tipo_pagamento, centro_custo_id, cartao_id,
                  aprovado_por_usuario_id, aprovado_em,
@@ -214,7 +214,10 @@
             <td class="px-4 py-3 text-slate-500 font-mono text-xs whitespace-nowrap">#${d.numero_despesa ?? '–'}</td>
             <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
             <td class="px-4 py-3 text-slate-800">${d.usuarios?.nome || '–'}</td>
-            <td class="px-4 py-3 max-w-xs"><span class="font-medium text-slate-800">${fornNome}</span></td>
+            <td class="px-4 py-3 max-w-xs">
+              <p class="font-medium text-slate-800 truncate">${fornNome}</p>
+              ${d.titulo ? `<p class="text-xs text-slate-400 truncate">${d.titulo}</p>` : ''}
+            </td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.cartoes_credito?.nome || '–'} ••••${d.cartoes_credito?.ultimos_4_digitos || ''}</td>
             <td class="px-4 py-3 text-right font-medium text-slate-900">${Utils.formatCurrency(d.valor)}</td>
@@ -263,6 +266,7 @@
 
       document.getElementById('detalhe-content').innerHTML = `
         <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+          ${data.titulo ? `<div class="col-span-2">${campo('Título da Despesa', data.titulo, ' class="col-span-2"').replace('<div class="col-span-2">', '').replace('</div>', '')}</div>` : ''}
           ${campo('Usuário', data.usuarios?.nome || '–')}
           ${campo('E-mail', `<span class="font-normal text-slate-700">${data.usuarios?.email || '–'}</span>`)}
           ${campo('Data da Despesa', Utils.formatDate(data.data_despesa))}

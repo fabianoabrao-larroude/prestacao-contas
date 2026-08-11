@@ -176,7 +176,7 @@
 
       let q = supabase
         .from('despesas')
-        .select(`id, numero_despesa, data_despesa, competencia, periodo_contabil, fornecedor,
+        .select(`id, numero_despesa, titulo, data_despesa, competencia, periodo_contabil, fornecedor,
                  fornecedor_compra_nome_snapshot, oc_os, valor, status, status_fiscal,
                  tipo_pagamento, numero_parcelas, usuario_id,
                  centros_custo(nome), contas_despesa(nome),
@@ -222,7 +222,10 @@
             <td class="px-4 py-3 text-slate-600 whitespace-nowrap">${Utils.formatDate(d.data_despesa)}</td>
             <td class="px-4 py-3 text-slate-600">${Utils.formatCompetencia(comp)}</td>
             <td class="px-4 py-3 text-slate-600 text-xs max-w-[140px] truncate">${solicitante}</td>
-            <td class="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">${fornNome}</td>
+            <td class="px-4 py-3 max-w-xs">
+              <p class="font-medium text-slate-800 truncate">${fornNome}</p>
+              ${d.titulo ? `<p class="text-xs text-slate-400 truncate">${d.titulo}</p>` : ''}
+            </td>
             <td class="px-4 py-3 text-slate-500 text-xs">${d.oc_os || '–'}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.centros_custo?.nome || '–'}</td>
             <td class="px-4 py-3 text-slate-600 text-xs">${d.contas_despesa?.nome || '–'}</td>

@@ -39,7 +39,7 @@
       const { data, error } = await supabase
         .from('despesa_mensagens')
         .select(`id, mensagem, created_at, destinatario_usuario_id, lido_em, despesa_id,
-                 despesas(numero_despesa),
+                 despesas(numero_despesa, titulo, usuarios!despesas_usuario_id_fkey(nome)),
                  usuarios!despesa_mensagens_autor_usuario_id_fkey(nome)`)
         .order('created_at', { ascending: false });
 
@@ -51,6 +51,8 @@
           grupos[m.despesa_id] = {
             despesaId: m.despesa_id,
             numero: m.despesas?.numero_despesa,
+            titulo: m.despesas?.titulo,
+            solicitante: m.despesas?.usuarios?.nome,
             naoLidas: 0,
             ultimaNaoLidaEm: null,
             ultimaMsg: m, // primeira ocorrência = mais recente (já ordenado desc)
@@ -83,7 +85,10 @@
           <div class="flex items-center gap-3 min-w-0">
             ${g.naoLidas > 0 ? `<span class="flex-shrink-0 min-w-[1.5rem] h-6 px-1.5 rounded-full bg-amber-500 text-white text-xs font-semibold flex items-center justify-center">${g.naoLidas}</span>` : '<span class="flex-shrink-0 w-6"></span>'}
             <div class="min-w-0">
-              <p class="text-sm font-medium text-slate-800">Despesa #${g.numero ?? '–'}</p>
+              <p class="text-sm font-medium text-slate-800">
+                Despesa #${g.numero ?? '–'} <span class="font-normal text-slate-500">— ${g.solicitante || '–'}</span>
+              </p>
+              ${g.titulo ? `<p class="text-xs text-slate-400 truncate">${g.titulo}</p>` : ''}
               <p class="text-xs text-slate-500 truncate max-w-md">
                 <span class="font-medium">${g.ultimaMsg.usuarios?.nome || '–'}:</span>
                 ${(g.ultimaMsg.mensagem || '').slice(0, 100)}

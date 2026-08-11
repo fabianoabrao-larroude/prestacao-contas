@@ -164,7 +164,7 @@ const Layout = {
 
   notificar(titulo, corpo, url) {
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
-    const n = new Notification(titulo, { body: corpo, icon: undefined, tag: url });
+    const n = new Notification(`PrestaContas · ${titulo}`, { body: corpo, tag: url });
     n.onclick = () => {
       window.focus();
       window.location.href = url;

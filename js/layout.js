@@ -168,6 +168,8 @@ const Layout = {
     const centros = (ucc || []).map(r => r.centro_custo_id);
     const cartoes = (cart || []).map(r => r.id);
 
+    badge.classList.add('hidden'); // reseta antes de recalcular (polling pode zerar a contagem)
+
     if (!centros.length && !cartoes.length) return; // sem alçada nenhuma, sem badge (inclui ADMIN puro)
 
     const { data: pendentes } = await supabase.from('despesas')
@@ -190,6 +192,8 @@ const Layout = {
   async atualizarBadgeMensagens(user) {
     const badge = document.getElementById('badge-mensagens');
     if (!badge) return;
+
+    badge.classList.add('hidden'); // reseta antes de recalcular (polling pode zerar a contagem)
 
     const { count } = await supabase.from('despesa_mensagens')
       .select('id', { count: 'exact', head: true })
@@ -260,6 +264,14 @@ const Layout = {
       // só conta se ele também for gestor/aprovador designado em algo.
       Layout.atualizarBadgeAprovacoes(user);
       Layout.atualizarBadgeMensagens(user);
+
+      // Atualização periódica dos alertas (a cada 60s), enquanto a aba
+      // estiver aberta — evita badge ficar parado até a próxima navegação.
+      clearInterval(Layout._alertasInterval);
+      Layout._alertasInterval = setInterval(() => {
+        Layout.atualizarBadgeAprovacoes(user);
+        Layout.atualizarBadgeMensagens(user);
+      }, 60000);
 
       // Atualizar ultimo_login de forma assíncrona (fire-and-forget)
       supabase.from('usuarios')

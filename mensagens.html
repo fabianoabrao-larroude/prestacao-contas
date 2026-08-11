@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mensagens – Prestação de Contas</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/layout.js"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="app-loading" class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="text-center"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div><p class="text-sm text-slate-500">Carregando…</p></div>
+  </div>
+  <div id="app" class="hidden flex h-screen overflow-hidden">
+    <div id="sidebar-container" class="flex-shrink-0"></div>
+    <main class="flex-1 overflow-y-auto">
+      <div class="p-6 max-w-4xl mx-auto">
+
+        <div class="mb-6">
+          <h1 class="text-2xl font-bold text-slate-900">Mensagens</h1>
+          <p class="text-sm text-slate-500 mt-1">Conversas por despesa — não lidas primeiro, mais recentes no topo</p>
+        </div>
+
+        <div id="lista-conversas" class="space-y-2"></div>
+        <p id="vazio" class="hidden text-sm text-slate-400 text-center py-10">Nenhuma conversa ainda.</p>
+
+      </div>
+    </main>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    async function carregar() {
+      const { data, error } = await supabase
+        .from('despesa_mensagens')
+        .select(`id, mensagem, created_at, destinatario_usuario_id, lido_em, despesa_id,
+                 despesas(numero_despesa),
+                 usuarios!despesa_mensagens_autor_usuario_id_fkey(nome)`)
+        .order('created_at', { ascending: false });
+
+      if (error) { Utils.toast(error.message, 'error'); return; }
+
+      const grupos = {};
+      (data || []).forEach(m => {
+        if (!grupos[m.despesa_id]) {
+          grupos[m.despesa_id] = {
+            despesaId: m.despesa_id,
+            numero: m.despesas?.numero_despesa,
+            naoLidas: 0,
+            ultimaNaoLidaEm: null,
+            ultimaMsg: m, // primeira ocorrência = mais recente (já ordenado desc)
+          };
+        }
+        const g = grupos[m.despesa_id];
+        if (m.destinatario_usuario_id === currentUser.id && !m.lido_em) {
+          g.naoLidas++;
+          if (!g.ultimaNaoLidaEm || m.created_at > g.ultimaNaoLidaEm) g.ultimaNaoLidaEm = m.created_at;
+        }
+      });
+
+      const lista = Object.values(grupos).sort((a, b) => {
+        const aTemNaoLida = a.naoLidas > 0, bTemNaoLida = b.naoLidas > 0;
+        if (aTemNaoLida !== bTemNaoLida) return aTemNaoLida ? -1 : 1;
+        if (aTemNaoLida && bTemNaoLida) return new Date(b.ultimaNaoLidaEm) - new Date(a.ultimaNaoLidaEm);
+        return new Date(b.ultimaMsg.created_at) - new Date(a.ultimaMsg.created_at);
+      });
+
+      renderizar(lista);
+    }
+
+    function renderizar(lista) {
+      const container = document.getElementById('lista-conversas');
+      document.getElementById('vazio').classList.toggle('hidden', lista.length > 0);
+
+      container.innerHTML = lista.map(g => `
+        <a href="despesa-form.html?id=${g.despesaId}"
+           class="flex items-center justify-between px-4 py-3 bg-white rounded-xl border ${g.naoLidas > 0 ? 'border-amber-300' : 'border-slate-200'} hover:border-blue-300 hover:shadow-sm transition-all">
+          <div class="flex items-center gap-3 min-w-0">
+            ${g.naoLidas > 0 ? `<span class="flex-shrink-0 min-w-[1.5rem] h-6 px-1.5 rounded-full bg-amber-500 text-white text-xs font-semibold flex items-center justify-center">${g.naoLidas}</span>` : '<span class="flex-shrink-0 w-6"></span>'}
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-slate-800">Despesa #${g.numero ?? '–'}</p>
+              <p class="text-xs text-slate-500 truncate max-w-md">
+                <span class="font-medium">${g.ultimaMsg.usuarios?.nome || '–'}:</span>
+                ${(g.ultimaMsg.mensagem || '').slice(0, 100)}
+              </p>
+            </div>
+          </div>
+          <span class="text-xs text-slate-400 flex-shrink-0 ml-3">${Utils.formatDateTime(g.ultimaMsg.created_at)}</span>
+        </a>`).join('');
+    }
+
+    (async () => {
+      currentUser = await Layout.init('mensagens', ['ADMIN','GESTOR','USUARIO']);
+      if (!currentUser) return;
+      await carregar();
+    })();
+  </script>
+</body>
+</html>

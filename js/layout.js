@@ -7,6 +7,7 @@ const Layout = {
     { href: 'home.html',             label: 'Home',            icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', roles: ['ADMIN','GESTOR','USUARIO'] },
     { href: 'despesas.html',         label: 'Minhas Despesas', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', roles: ['ADMIN','GESTOR','USUARIO'] },
     { href: 'aprovacoes.html',       label: 'Aprovações',      icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', roles: ['ADMIN','GESTOR','USUARIO'] },
+    { href: 'mensagens.html',        label: 'Mensagens',       icon: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z', roles: ['ADMIN','GESTOR','USUARIO'] },
     { href: 'relatorios.html',       label: 'Relatórios',      icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', roles: ['ADMIN','GESTOR'] },
     { href: 'dashboards.html',       label: 'Dashboards',      icon: 'M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z', roles: ['ADMIN','GESTOR'] },
     { separator: true, label: 'Cadastros', roles: ['ADMIN'] },
@@ -100,7 +101,8 @@ const Layout = {
         const cls = isActive
           ? 'flex items-center gap-3 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium'
           : 'flex items-center gap-3 px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 hover:text-white text-sm transition-colors';
-        const badgeId = item.href === 'aprovacoes.html' ? ' id="badge-aprovacoes"' : '';
+        const badgeId = item.href === 'aprovacoes.html' ? ' id="badge-aprovacoes"'
+          : item.href === 'mensagens.html' ? ' id="badge-mensagens"' : '';
         return `
           <a href="${item.href}" class="${cls}">
             <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,6 +186,22 @@ const Layout = {
     }
   },
 
+  // ── Badge de mensagens não lidas endereçadas ao usuário ────
+  async atualizarBadgeMensagens(user) {
+    const badge = document.getElementById('badge-mensagens');
+    if (!badge) return;
+
+    const { count } = await supabase.from('despesa_mensagens')
+      .select('id', { count: 'exact', head: true })
+      .eq('destinatario_usuario_id', user.id)
+      .is('lido_em', null);
+
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.classList.remove('hidden');
+    }
+  },
+
   // ── Ponto de entrada principal ─────────────────────────────
   // Toda página autenticada chama Layout.init() no seu script.
   // Retorna o usuário operacional ou null (após mostrar erro na tela).
@@ -241,6 +259,7 @@ const Layout = {
       // ADMIN é analista do processo e não tem alçada de aprovação, então
       // só conta se ele também for gestor/aprovador designado em algo.
       Layout.atualizarBadgeAprovacoes(user);
+      Layout.atualizarBadgeMensagens(user);
 
       // Atualizar ultimo_login de forma assíncrona (fire-and-forget)
       supabase.from('usuarios')

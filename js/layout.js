@@ -150,6 +150,28 @@ const Layout = {
       </aside>`;
   },
 
+  // ── Notificações do navegador (Web Notification API) ───────
+  // Só avisa sobre chegadas NOVAS durante o polling, nunca sobre a
+  // contagem que já existia quando a página carregou.
+  _prevCounts: {},
+
+  pedirPermissaoNotificacao() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  },
+
+  notificar(titulo, corpo, url) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const n = new Notification(titulo, { body: corpo, icon: undefined, tag: url });
+    n.onclick = () => {
+      window.focus();
+      window.location.href = url;
+      n.close();
+    };
+  },
+
   // ── Badge de aprovações realmente acionáveis pelo usuário ──
   async atualizarBadgeAprovacoes(user) {
     const badge = document.getElementById('badge-aprovacoes');
@@ -186,6 +208,16 @@ const Layout = {
       badge.textContent = count > 99 ? '99+' : String(count);
       badge.classList.remove('hidden');
     }
+
+    const anterior = Layout._prevCounts.aprovacoes;
+    if (anterior !== undefined && count > anterior) {
+      Layout.notificar(
+        'Nova despesa para aprovar',
+        `Você tem ${count} despesa(s) aguardando sua aprovação.`,
+        'aprovacoes.html'
+      );
+    }
+    Layout._prevCounts.aprovacoes = count;
   },
 
   // ── Badge de mensagens não lidas endereçadas ao usuário ────
@@ -204,6 +236,16 @@ const Layout = {
       badge.textContent = count > 99 ? '99+' : String(count);
       badge.classList.remove('hidden');
     }
+
+    const anterior = Layout._prevCounts.mensagens;
+    if (anterior !== undefined && count > anterior) {
+      Layout.notificar(
+        'Nova mensagem',
+        `Você tem ${count} mensagem(ns) não lida(s).`,
+        'mensagens.html'
+      );
+    }
+    Layout._prevCounts.mensagens = count;
   },
 
   // ── Ponto de entrada principal ─────────────────────────────
@@ -262,6 +304,7 @@ const Layout = {
       // fila inteira visível (RLS), é só o que falta ELE aprovar.
       // ADMIN é analista do processo e não tem alçada de aprovação, então
       // só conta se ele também for gestor/aprovador designado em algo.
+      Layout.pedirPermissaoNotificacao();
       Layout.atualizarBadgeAprovacoes(user);
       Layout.atualizarBadgeMensagens(user);
 

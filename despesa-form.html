@@ -599,6 +599,7 @@
       renderMensagens(true);
 
       await supabase.rpc('marcar_mensagens_lidas', { p_despesa_id: despesaId });
+      Layout.atualizarBadgeMensagens(currentUser);
     }
 
     function renderMensagens(rolarParaFinal = false) {
